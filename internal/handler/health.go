@@ -3,51 +3,82 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/thesouldev/goboxd/internal/config"
+	"github.com/thesouldev/goboxd/internal/runner"
 )
 
-// HealthResponse represents the health check response
-type HealthResponse struct {
-	Status string `json:"status"`
+// HealthHandler manages the health and readiness checks.
+type HealthHandler struct {
+	nsjailProbe runner.ProbeResult
+	langProbes  map[string]runner.ProbeResult
+	cfg         *config.Config
 }
 
-// Health handles GET /healthz requests
-func Health(w http.ResponseWriter, r *http.Request) {
+// NewHealthHandler creates a new HealthHandler with the given probe results.
+func NewHealthHandler(nsjail runner.ProbeResult, langs map[string]runner.ProbeResult, cfg *config.Config) *HealthHandler {
+	return &HealthHandler{
+		nsjailProbe: nsjail,
+		langProbes:  langs,
+		cfg:         cfg,
+	}
+}
+
+// Readyz handles GET /readyz requests.
+// Returns 200 only if nsjail OK + all language probes OK.
+// Returns 503 with breakdown on any failure.
+// JSON shape exactly as spec §03.
+func (h *HealthHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(HealthResponse{Status: "ok"})
-}
+	allOK := h.nsjailProbe.OK
+	langResp := make(map[string]map[string]interface{})
 
-// Ready handles GET /readyz requests
-func Ready(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+	for langID, probe := range h.langProbes {
+		if !probe.OK {
+			allOK = false
+		}
+
+		m := map[string]interface{}{
+			"ok": probe.OK,
+		}
+		if probe.Version != "" {
+			m["version"] = probe.Version
+		}
+		if probe.Error != "" {
+			m["error"] = probe.Error
+		}
+		langResp[langID] = m
+	}
+
+	nsjailResp := map[string]interface{}{
+		"ok":      h.nsjailProbe.OK,
+		"version": h.nsjailProbe.Version, // Always present, even if empty string
+	}
+	if h.nsjailProbe.Error != "" {
+		nsjailResp["error"] = h.nsjailProbe.Error
+	}
+
+	status := "ok"
+	if !allOK {
+		status = "degraded"
+	}
+
+	resp := map[string]interface{}{
+		"status":    status,
+		"nsjail":    nsjailResp,
+		"languages": langResp,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(HealthResponse{Status: "ready"})
-}
-
-// InfoResponse represents information about the service
-type InfoResponse struct {
-	Service string `json:"service"`
-	Version string `json:"version"`
-}
-
-// Info handles GET /info requests
-func Info(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+	if !allOK {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	} else {
+		w.WriteHeader(http.StatusOK)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(InfoResponse{
-		Service: "goboxd",
-		Version: "0.1.0",
-	})
+	json.NewEncoder(w).Encode(resp)
 }

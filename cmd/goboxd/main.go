@@ -11,6 +11,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/thesouldev/goboxd/internal/config"
+	"github.com/thesouldev/goboxd/internal/handler"
+	"github.com/thesouldev/goboxd/internal/runner"
 )
 
 var (
@@ -30,11 +32,20 @@ func main() {
 	slog.Info("starting goboxd", "version", version, "commit", commit)
 
 	// Load configuration
-	_, err := config.Load(*configPath)
+	cfg, err := config.Load(*configPath)
 	if err != nil {
 		slog.Error("failed to load configuration", "error", err, "path", *configPath)
 		os.Exit(1)
 	}
+
+	// Run startup probes
+	slog.Info("running startup probes")
+	nsjailProbe := runner.ProbeNsjail()
+	langProbes := make(map[string]runner.ProbeResult)
+	for langID, langCfg := range cfg.Languages {
+		langProbes[langID] = runner.ProbeLanguage(langCfg)
+	}
+	healthHandler := handler.NewHealthHandler(nsjailProbe, langProbes, cfg)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -45,6 +56,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
+	r.Get("/readyz", healthHandler.Readyz)
 
 	// Start server
 	addr := fmt.Sprintf(":%d", *port)
