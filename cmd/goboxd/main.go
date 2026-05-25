@@ -13,6 +13,7 @@ import (
 	"github.com/thesouldev/goboxd/internal/config"
 	"github.com/thesouldev/goboxd/internal/handler"
 	"github.com/thesouldev/goboxd/internal/runner"
+	"github.com/thesouldev/goboxd/internal/stats"
 )
 
 var (
@@ -38,6 +39,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Setup Stats
+	st := &stats.Stats{}
+
 	// Run startup probes
 	slog.Info("running startup probes")
 	nsjailProbe := runner.ProbeNsjail()
@@ -45,7 +49,7 @@ func main() {
 	for langID, langCfg := range cfg.Languages {
 		langProbes[langID] = runner.ProbeLanguage(langCfg)
 	}
-	healthHandler := handler.NewHealthHandler(nsjailProbe, langProbes, cfg)
+	healthHandler := handler.NewHealthHandler(version, commit, nsjailProbe, langProbes, cfg, st)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -57,6 +61,7 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 	r.Get("/readyz", healthHandler.Readyz)
+	r.Get("/info", healthHandler.Info)
 
 	// Start server
 	addr := fmt.Sprintf(":%d", *port)

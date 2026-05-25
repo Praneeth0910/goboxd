@@ -36,3 +36,9 @@ func (s *Stats) SetLastError(t time.Time) {
 	defer s.mu.Unlock()
 	s.LastInternalErrorAt = t
 }
+
+func (s *Stats) GetLastError() time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.LastInternalErrorAt
+}
