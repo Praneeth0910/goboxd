@@ -34,4 +34,23 @@ Allowlist-based security is more effective than blacklist filtering; glob patter
 
 **What went wrong:** Under high concurrency (1000+ requests), we observed a significant number of collisions due to the limited UID range and random generation. This led to performance degradation as the system had to retry directory creation multiple times, and in some cases, it failed to create a directory after all retries. Additionally, this approach posed a security risk as it could potentially allow an attacker to predict directory names and cause intentional collisions.
 
-**How we resolved it:** We switched to an atomic counter approach combined with the process ID (PID) and a random hex string for directory naming. The new format is `goboxd-{PID}-{counter}-{random}`. The atomic counter guarantees that each directory name is unique across all goroutines in the same process, eliminating the possibility of collisions even under high concurrency. The inclusion of the PID and random hex adds an extra layer of uniqueness and makes it more difficult for attackers to predict directory names.
+**What we were trying to do:** We switched to an atomic counter approach combined with the process ID (PID) and a random hex string for directory naming. The new format is `goboxd-{PID}-{counter}-{random}`. The atomic counter guarantees that each directory name is unique across all goroutines in the same process, eliminating the possibility of collisions even under high concurrency. The inclusion of the PID and random hex adds an extra layer of uniqueness and makes it more difficult for attackers to predict directory names.
+
+## May 25, 2026 - RunSandbox would have been dead code if added naively alongside run.go
+
+**What we were trying to do:**
+Add a `RunSandbox` function in `internal/runner/runner.go` as the canonical execution core, wrapping nsjail and owning the full lifecycle of a job.
+
+**What went wrong:**
+The entire execution pipeline (jail dir creation, build, per-test run, output comparison) already lived inside `internal/handler/run.go`. Writing `RunSandbox` without wiring it in would have created two parallel, diverging implementations — neither calling the other. The handler tests would still pass (against the old path), and `RunSandbox` would be dead code.
+
+**How we resolved it:**
+We evaluated three approaches:
+- **Option A (Chosen):** Full refactor. Extracted all execution logic into `runner.RunSandbox` and kept `run.go` strictly focused on HTTP concerns (validation, mapping, stats, concurrency control).
+- **Option B:** Add `RunSandbox` as a skeleton placeholder stub without wiring it in, leaving the handler unchanged.
+- **Option C:** Implement nsjail integration directly within the existing handler functions.
+We chose Option A to prevent parallel/duplicate code paths, guarantee that the new sandbox logic is fully exercised by tests, and enforce clean separation of concerns.
+
+
+**What we learned:**
+When adding a "core logic" function to a layer below an existing handler, always check whether the handler already owns that logic. If it does, the right move is to extract and wire — not add alongside.
