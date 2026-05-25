@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -41,6 +42,10 @@ func main() {
 
 	// Setup Stats
 	st := &stats.Stats{}
+
+	// Clean up stale jail directories from the temp directory (using 10 minutes as maxAge)
+	slog.Info("sweeping orphaned sandbox directories")
+	runner.SweepOrphanedDirectories(os.TempDir(), 10*time.Minute)
 
 	// Run startup probes
 	slog.Info("running startup probes")
