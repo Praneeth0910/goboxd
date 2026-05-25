@@ -50,6 +50,7 @@ func main() {
 		langProbes[langID] = runner.ProbeLanguage(langCfg)
 	}
 	healthHandler := handler.NewHealthHandler(version, commit, nsjailProbe, langProbes, cfg, st)
+	runHandler := handler.NewRunHandler(cfg, st)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -65,6 +66,7 @@ func main() {
 	})
 	r.Get("/readyz", healthHandler.Readyz)
 	r.Get("/info", healthHandler.Info)
+	r.Post("/run", runHandler.Run)
 
 	// Start server
 	addr := fmt.Sprintf(":%d", *port)

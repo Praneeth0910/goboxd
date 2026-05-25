@@ -96,8 +96,14 @@ func (h *HealthHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 		"languages": langResp,
 	}
 
-	writeJSON(w, status, resp)
+	httpStatus := http.StatusOK
+	if !allOK {
+		httpStatus = http.StatusServiceUnavailable
+	}
+
+	writeJSON(w, httpStatus, resp)
 }
+
 
 // Info handlers types
 type BuildInfo struct {
