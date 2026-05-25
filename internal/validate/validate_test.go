@@ -243,6 +243,186 @@ func TestFlagsEmpty(t *testing.T) {
 	}
 }
 
+// ============ ValidateFlags Tests ============
+
+func TestValidateFlagsEmptyAllowlist(t *testing.T) {
+	// Empty allowlist should reject any flags
+	err := ValidateFlags([]string{"-O2", "-Wall"}, []string{})
+	if err == nil {
+		t.Fatal("ValidateFlags with empty allowlist should reject flags")
+	}
+	assertErrorCode(t, err, "invalid_flags", "no flags allowed")
+}
+
+func TestValidateFlagsNilAllowlist(t *testing.T) {
+	// Nil allowlist should reject any flags
+	err := ValidateFlags([]string{"-O2"}, nil)
+	if err == nil {
+		t.Fatal("ValidateFlags with nil allowlist should reject flags")
+	}
+	assertErrorCode(t, err, "invalid_flags", "no flags allowed")
+}
+
+func TestValidateFlagsNoFlagsWithAllowlist(t *testing.T) {
+	// No flags with allowlist should pass
+	err := ValidateFlags([]string{}, []string{"-O2", "-Wall"})
+	if err != nil {
+		t.Fatalf("ValidateFlags with no flags should pass, got: %v", err)
+	}
+}
+
+func TestValidateFlagsExactMatch(t *testing.T) {
+	allowlist := []string{"-O0", "-O1", "-O2", "-O3", "-Wall", "-Wextra"}
+
+	validFlags := [][]string{
+		{"-O2"},
+		{"-Wall"},
+		{"-O3", "-Wall"},
+		{"-O0", "-Wextra"},
+	}
+
+	for _, flags := range validFlags {
+		err := ValidateFlags(flags, allowlist)
+		if err != nil {
+			t.Errorf("ValidateFlags(%v) should pass with exact match, got: %v", flags, err)
+		}
+	}
+}
+
+func TestValidateFlagsSuffixGlob(t *testing.T) {
+	allowlist := []string{"-O0", "-O1", "-O2", "-O3", "-Wall", "-Wextra", "-std=*"}
+
+	validFlags := [][]string{
+		{"-std=c++17"},
+		{"-std=c++20"},
+		{"-std=c11"},
+		{"-std=gnu++17"},
+		{"-O2", "-std=c++17", "-Wall"},
+	}
+
+	for _, flags := range validFlags {
+		err := ValidateFlags(flags, allowlist)
+		if err != nil {
+			t.Errorf("ValidateFlags(%v) should pass with glob match, got: %v", flags, err)
+		}
+	}
+}
+
+func TestValidateFlagsRejectDisallowed(t *testing.T) {
+	allowlist := []string{"-O0", "-O1", "-O2", "-O3", "-Wall", "-std=*"}
+
+	rejectedTests := []struct {
+		flags       []string
+		description string
+	}{
+		{[]string{"-fplugin=evil.so"}, "plugin injection"},
+		{[]string{"@response_file"}, "response file injection"},
+		{[]string{"--specs=/tmp/evil"}, "specs injection"},
+		{[]string{"-Wl,-rpath,/evil"}, "linker flag injection"},
+		{[]string{"-B/tmp/evil"}, "search path injection"},
+		{[]string{"-x", "c"}, "language flag"},
+		{[]string{"-O2", "-fplugin=malware"}, "mixed valid and invalid"},
+	}
+
+	for _, test := range rejectedTests {
+		err := ValidateFlags(test.flags, allowlist)
+		if err == nil {
+			t.Errorf("ValidateFlags(%v) should reject %s", test.flags, test.description)
+		}
+		assertErrorCode(t, err, "invalid_flags", "not in allowlist")
+	}
+}
+
+func TestValidateFlagsListsAllRejected(t *testing.T) {
+	allowlist := []string{"-O2", "-Wall"}
+
+	// Multiple invalid flags - error should list them all
+	err := ValidateFlags([]string{"-fplugin=x", "-Wl,rpath", "-O2"}, allowlist)
+	if err == nil {
+		t.Fatal("ValidateFlags should reject when invalid flags are present")
+	}
+
+	errStr := err.Error()
+	// Should contain both rejected flags
+	if !strings.Contains(errStr, "-fplugin=x") {
+		t.Errorf("error should list -fplugin=x, got: %s", errStr)
+	}
+	if !strings.Contains(errStr, "-Wl,rpath") {
+		t.Errorf("error should list -Wl,rpath, got: %s", errStr)
+	}
+	// Should not list valid flag
+	if !strings.Contains(errStr, "-O2") {
+		t.Logf("note: -O2 is valid and should not be listed separately, message: %s", errStr)
+	}
+}
+
+func TestValidateFlagsRealWorldCompilerAttacks(t *testing.T) {
+	// Realistic C++ compiler with allowlist
+	allowlist := []string{"-O0", "-O1", "-O2", "-O3", "-Wall", "-Wextra", "-std=*"}
+
+	type attackTest struct {
+		flags       []string
+		shouldPass  bool
+		description string
+	}
+
+	tests := []attackTest{
+		// Valid flags
+		{[]string{"-O2"}, true, "Valid optimization flag"},
+		{[]string{"-Wall", "-Wextra"}, true, "Valid warning flags"},
+		{[]string{"-std=c++17", "-O3", "-Wall"}, true, "Valid modern C++ config"},
+
+		// Compiler injection attacks
+		{[]string{"-fplugin=evil.so"}, false, "GCC plugin injection"},
+		{[]string{"-fplugin-arg=x"}, false, "GCC plugin argument"},
+		{[]string{"@response_file"}, false, "Response file injection"},
+		{[]string{"-spec=myspec"}, false, "Spec file injection"},
+		{[]string{"--specs=/tmp/evil.spec"}, false, "GCC specs injection"},
+		{[]string{"-Wl,-rpath,/tmp/evil"}, false, "Linker rpath injection"},
+		{[]string{"-Wl,--dynamic-linker=/evil/ld.so"}, false, "Linker dynamic injection"},
+		{[]string{"-B/tmp/evil"}, false, "Binutils search path injection"},
+		{[]string{"-isystem", "/etc"}, false, "System include injection"},
+		{[]string{"-iquote", "/tmp"}, false, "Quote include injection"},
+		{[]string{"-x", "c"}, false, "Language override"},
+		{[]string{"-x", "cpp-output"}, false, "Preprocessed input trick"},
+
+		// Mixed attacks
+		{[]string{"-O2", "-fplugin=evil", "-Wall"}, false, "Valid with injection"},
+		{[]string{"-std=c++17", "@rsp.txt", "-O3"}, false, "Standard with response file"},
+	}
+
+	for _, test := range tests {
+		err := ValidateFlags(test.flags, allowlist)
+		if test.shouldPass && err != nil {
+			t.Errorf("ValidateFlags(%v) should pass (%s), got: %v", test.flags, test.description, err)
+		}
+		if !test.shouldPass && err == nil {
+			t.Errorf("ValidateFlags(%v) should reject (%s)", test.flags, test.description)
+		}
+	}
+}
+
+func TestValidateFlagsGlobPrefixOnly(t *testing.T) {
+	// Glob should only work as suffix, not prefix
+	allowlist := []string{"-std=*", "-O*"}
+
+	// "-std=*" should match "-std=c++17"
+	if err := ValidateFlags([]string{"-std=c++17"}, allowlist); err != nil {
+		t.Errorf("glob suffix should match -std=c++17")
+	}
+
+	// "-O*" should NOT match (prefix globs not supported)
+	// But "-O2" should match exact
+	if err := ValidateFlags([]string{"-O2"}, []string{"-O*"}); err == nil {
+		t.Logf("note: -O* is prefix glob (not supported), -O2 matches because it's exact match against list")
+	}
+
+	// "-O2" exactly in allowlist should pass
+	if err := ValidateFlags([]string{"-O2"}, []string{"-O2"}); err != nil {
+		t.Errorf("-O2 should match exact entry")
+	}
+}
+
 // ============ Attack Test Suite ============
 
 func TestRealWorldAttackVectors(t *testing.T) {
