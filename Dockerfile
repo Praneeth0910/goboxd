@@ -1,69 +1,71 @@
 # syntax=docker/dockerfile:1.7
+# Stage 1: Build nsjail from source (tag 3.4)
+# Stage 2: Build Go binary
+# Stage 3: Runtime with all language toolchains
 
-ARG GO_VERSION=1.23
-ARG DEBIAN_VERSION=bookworm
+# ============================================================================
+# Stage 1: nsjail-builder
+# ============================================================================
+FROM debian:bookworm-slim AS nsjail-builder
 
-# ---- Build nsjail from local submodule ----
-FROM debian:${DEBIAN_VERSION}-slim AS nsjail-builder
-
-# Install build dependencies for nsjail
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        autoconf bison ca-certificates flex g++ gcc make \
-        libnl-route-3-dev libprotobuf-dev libtool pkg-config \
-        protobuf-compiler \
+    bison flex protobuf-compiler libprotobuf-dev \
+    libnl-route-3-dev pkg-config g++ make git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the nsjail submodule source code
 COPY external/nsjail /src/nsjail
+WORKDIR /src/nsjail
+RUN make && install -m 0755 nsjail /usr/sbin/nsjail
 
-# Build nsjail from source
-RUN make -C /src/nsjail && \
-    install -m 0755 /src/nsjail/nsjail /usr/local/bin/nsjail
-
-# ---- Builder / dev image (Go + nsjail) ----
-FROM golang:${GO_VERSION}-${DEBIAN_VERSION} AS builder
-
-# Install runtime dependencies for nsjail
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libnl-route-3-200 libprotobuf32 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy nsjail binary from builder stage
-COPY --from=nsjail-builder /usr/local/bin/nsjail /usr/local/bin/nsjail
-
-# Setup Go environment
-RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+# ============================================================================
+# Stage 2: go-builder
+# ============================================================================
+FROM golang:1.22-bookworm AS go-builder
 
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-
 COPY . .
 
-# Build goboxd with static linking where possible
+# version/commit passed in as build args
+ARG VERSION=0.1.0
+ARG COMMIT=unknown
+ENV GOTOOLCHAIN=local
+
 RUN CGO_ENABLED=0 go build \
-        -trimpath \
-        -ldflags="-s -w" \
-        -o /out/goboxd ./cmd/goboxd
+    -ldflags="-X main.version=${VERSION} -X main.commit=${COMMIT}" \
+    -o /usr/local/bin/goboxd \
+    ./cmd/goboxd
 
-# ---- Runtime image ----
-FROM debian:${DEBIAN_VERSION}-slim AS runtime
+# ============================================================================
+# Stage 3: final runtime image with language toolchains
+# ============================================================================
+FROM debian:bookworm-slim
 
-# Install only runtime dependencies for nsjail
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates libnl-route-3-200 libprotobuf32 \
+    bash ca-certificates \
+    python3 \
+    gcc g++ \
+    default-jdk \
+    nodejs \
+    iverilog \
+    libnl-route-3-200 \
+    libprotobuf32 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy built artifacts from builder stages
-COPY --from=nsjail-builder /usr/local/bin/nsjail /usr/local/bin/nsjail
-COPY --from=builder        /out/goboxd          /usr/local/bin/goboxd
+# Copy binaries from build stages
+COPY --from=nsjail-builder /usr/sbin/nsjail /usr/sbin/nsjail
+COPY --from=go-builder /usr/local/bin/goboxd /usr/local/bin/goboxd
 
-# Create sandbox directory with sticky bit
+# Copy language config
+RUN mkdir -p /etc/goboxd
+COPY languages.yaml /etc/goboxd/languages.yaml
+
+# Sandbox temp dir
 RUN mkdir -p /tmp/goboxd && chmod 1777 /tmp/goboxd
 
-EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD /usr/local/bin/goboxd -addr :8080 2>/dev/null || exit 1
+ENV NSJAIL_PATH=/usr/sbin/nsjail
+ENV LANGUAGES_CONFIG=/etc/goboxd/languages.yaml
 
-ENTRYPOINT ["/usr/local/bin/goboxd"]
-CMD ["-addr", ":8080", "-config", "config.yaml"]
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/goboxd", "--config", "/etc/goboxd/languages.yaml"]
