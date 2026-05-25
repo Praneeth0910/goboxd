@@ -1,0 +1,77 @@
+languages:
+  go:
+    name: Go
+    runtime: go
+    version: "1.21"
+    flags:
+      - "-run"
+      - "-count"
+      - "-timeout"
+      - "-v"
+      - "-race"
+      - "-vet"
+    timeout: 30
+    mem_limit: "512Mi"
+    cpu_limit: "2"
+
+  python:
+    name: Python
+    runtime: python3
+    version: "3.11"
+    flags:
+      - "-c"
+      - "-m"
+      - "-u"
+      - "-W"
+    timeout: 30
+    mem_limit: "256Mi"
+    cpu_limit: "1"
+
+  node:
+    name: Node.js
+    runtime: node
+    version: "18.x"
+    flags:
+      - "-e"
+      - "-r"
+      - "--eval"
+      - "--require"
+    timeout: 30
+    mem_limit: "256Mi"
+    cpu_limit: "1"
+
+  rust:
+    name: Rust
+    runtime: rustc
+    version: "1.71"
+    flags:
+      - "-O"
+      - "--edition"
+      - "-C"
+    timeout: 60
+    mem_limit: "512Mi"
+    cpu_limit: "2"
+
+  java:
+    name: Java
+    runtime: java
+    version: "21"
+    flags:
+      - "-Xmx"
+      - "-Xms"
+      - "-XX"
+    timeout: 60
+    mem_limit: "512Mi"
+    cpu_limit: "2"
+
+limits:
+  memory: 512
+  cpu: 4
+  processes: 50
+  open_files: 1024
+  max_duration: 300
+
+sandbox:
+  temp_dir: /tmp/goboxd
+  rootfs: /srv/goboxd
+  network_nat: false
