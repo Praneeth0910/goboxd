@@ -79,3 +79,78 @@ goboxd/
 - Distributed execution
 - Job history persistence
 - Request rate limiting
+
+## 26-05-26 - Add languages.yaml with python3 and cpp
+**prompt**: "Write a languages.yaml file for goboxd with exactly two language entries for Stage 1:
+
+1. Python 3 (id: py3):
+   - Interpreted, no build step
+   - Source filename: solution.py
+   - Run: /usr/bin/python3 with {{source}} as arg
+   - Limits: wall_time_s: 9, memory_kb: 102400, max_processes: 100
+
+2. C++ (id: cpp):
+   - Compiled language, has build + run steps
+   - Source filename: solution.cpp, artifact name: solution
+   - Build: /usr/bin/g++ with {{flags}}, -o {{artifact}}, {{source}}
+   - Build limits: wall_time_s: 3, memory_kb: 1048576, max_processes: 100
+   - Build flag_allowlist: -O0 -O1 -O2 -O3 -Wall -Wextra -std=* (glob)
+   - Run: ./{{artifact}}
+   - Run limits: wall_time_s: 3, memory_kb: 524288, max_processes: 64
+
+The YAML shape should match this struct (show me the YAML, not Go code):
+- id, name, source_filename, artifact (optional), build (optional), run
+
+Add a comment at the top explaining that adding a new language = one YAML block 
++ one Dockerfile install line, zero Go code changes."
+
+**Response Summary**: 
+```yaml
+# languages.yaml defines the supported programming languages for goboxd.
+# To add a new language, simply add a new block with the required fields and update the Dockerfile to install necessary compilers/interpreters. No Go code changes needed.
+- id: py3
+  name: Python 3
+  source_filename: solution.py
+  run:
+    command: /usr/bin/python3 {{source}}
+    limits:
+      wall_time_s: 9
+      memory_kb: 102400
+      max_processes: 100
+- id: cpp
+  name: C++
+  source_filename: solution.cpp
+  artifact: solution
+  build:
+    command: /usr/bin/g++ {{flags}} -o {{artifact}} {{source}}
+    limits:
+      wall_time_s: 3
+      memory_kb: 1048576
+      max_processes: 100
+    flag_allowlist:
+      - -O0
+      - -O1
+      - -O2
+      - -O3
+      - -Wall
+      - -Wextra
+      - -std=*
+  run:
+    command: ./{{artifact}}
+    limits:
+      wall_time_s: 3
+      memory_kb: 524288
+      max_processes: 64
+```
+**What we used / didnt used**:
+**Used**:
+- YAML format for language configuration
+- Two language entries: Python 3 and C++
+- Build and run command templates with {{source}}, {{artifact}}, and {{flags}} placeholders
+- Resource limits for both build and run stages
+- Flag allowlist with glob pattern support for C++ standards
+**Not Used**:
+- Additional languages (e.g., Java, Go, Rust)
+- More complex build/run steps (e.g., multi-stage builds, dependency installation)
+- Environment variable support in commands
+- Per-language custom error messages or validation rules

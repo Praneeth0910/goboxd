@@ -28,3 +28,24 @@ This document contains the Architecture Decision Records (ADRs) for the AI proje
 -  Reproducible: nsjail pinned via git submodule tag 3.4
 -  Fast iteration: Docker layer caching across stages
 -  Longer first build (~5-10 min with full compilation)
+
+---
+
+## Per-Request Sandbox Directory Isolation with Atomic Counter Naming
+
+**Context**: Each POST /run request needs an isolated temporary directory (jail dir) for the nsjail sandbox. Under concurrent load, directory naming must be guaranteed unique to prevent races, collisions, and potential security issues. The Python reference implementation uses a UID range approach which suffers from collisions under high concurrency.
+
+**Options considered**:
+1. UUID-based naming: `/tmp/goboxd-{uuid}` — cryptographically unique but doesn't prevent reuse
+2. UID range (30k-wide, retry 3x): `uid_{random}` — fast but prone to collisions under load
+3. Atomic counter + PID + random: `goboxd-{pid}-{counter}-{hex}` — guaranteed unique per process, scalable
+4. Timestamp-based: `goboxd-{timestamp}-{random}` — can collide under nanosecond accuracy limits
+
+**Decision**: Use atomic counter combined with PID and 6-character random hex: `goboxd-{PID}-{counter}-{random}`. The atomically-incremented counter guarantees no two directories share the same name across all goroutines in the same process.
+
+**Consequences**:
+- **Security (hole #5):** UID collisions impossible even under 1000+ concurrent requests
+- **Cleanup (hole #7):** mtime-based orphan sweeper can safely cleanup old `goboxd-*` directories without collision risk
+- **Performance:** O(1) naming with no retry loops or filesystem checks
+- **Tradeoff:** Directory names are less human-readable than UUIDs, but clarity is not a security requirement
+- **Lifecycle:** Each request immediately defers cleanup via `defer cleanup()`, ensuring even panics trigger RemoveAll
