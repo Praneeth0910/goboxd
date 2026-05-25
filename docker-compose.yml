@@ -1,21 +1,24 @@
+version: '3.8'
+
 services:
   goboxd:
     build:
       context: .
-      target: runtime
-    image: goboxd:dev
+      dockerfile: Dockerfile
     container_name: goboxd
     ports:
       - "8080:8080"
-    privileged: true
-
-  tools:
-    build:
-      context: .
-      target: builder
-    image: goboxd-tools:dev
     volumes:
-      - .:/src
-    working_dir: /src
-    profiles: ["tools"]
-    entrypoint: []
+      - ./languages.yaml:/etc/goboxd/languages.yaml:ro
+    environment:
+      - GOBOXD_MAX_CONCURRENT=
+      - NSJAIL_PATH=/usr/sbin/nsjail
+      - LANGUAGES_CONFIG=/etc/goboxd/languages.yaml
+    privileged: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
