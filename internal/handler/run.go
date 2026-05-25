@@ -106,7 +106,9 @@ func NewRunHandler(cfg *config.Config, st *stats.Stats) *RunHandler {
 func writeError(w http.ResponseWriter, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
-	json.NewEncoder(w).Encode(errorResponse{Code: code, Message: message})
+	json.NewEncoder(w).Encode(map[string]any{
+		"error": errorResponse{Code: code, Message: message},
+	})
 }
 
 
@@ -121,7 +123,11 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ── 1. Decode request ────────────────────────────────────────────────────
+	// 1. Wrap r.Body with http.MaxBytesReader BEFORE decoding
+	maxSourceBytes := int64(h.cfg.MaxSourceBytes)
+	r.Body = http.MaxBytesReader(w, r.Body, maxSourceBytes)
+
+	// 2. Decode JSON
 	var req RunRequest
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -130,32 +136,14 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ── 2. Validate language ─────────────────────────────────────────────────
+	// 3. Validate language exists
 	lang, ok := h.cfg.Languages[req.Language]
 	if !ok {
 		writeError(w, "unknown_language", fmt.Sprintf("language %q is not configured", req.Language))
 		return
 	}
 
-	// ── 3. Validate source size ──────────────────────────────────────────────
-	if len(req.Source) > h.cfg.MaxSourceBytes {
-		writeError(w, "source_too_large",
-			fmt.Sprintf("source exceeds limit of %d bytes (got %d)", h.cfg.MaxSourceBytes, len(req.Source)))
-		return
-	}
-
-	// ── 4. Validate test count ───────────────────────────────────────────────
-	if len(req.Tests) > h.cfg.MaxTests {
-		writeError(w, "too_many_tests",
-			fmt.Sprintf("too many test cases: limit is %d, got %d", h.cfg.MaxTests, len(req.Tests)))
-		return
-	}
-	if len(req.Tests) == 0 {
-		writeError(w, "no_tests", "at least one test case is required")
-		return
-	}
-
-	// ── 5. Validate source_filename ──────────────────────────────────────────
+	// 4. Validate source_filename
 	if req.SourceFilename != "" {
 		if err := validate.ValidateFilename(req.SourceFilename); err != nil {
 			writeError(w, "invalid_filename", err.Error())
@@ -163,7 +151,7 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// ── 6. Validate artifact_filename ────────────────────────────────────────
+	// 5. Validate artifact_filename
 	if req.ArtifactFilename != "" {
 		if err := validate.ValidateFilename(req.ArtifactFilename); err != nil {
 			writeError(w, "invalid_filename", err.Error())
@@ -171,11 +159,10 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// ── 7. Validate build flags ──────────────────────────────────────────────
+	// 6. Validate build flags
 	if req.Build != nil && len(req.Build.Flags) > 0 {
 		if lang.Build == nil {
-			writeError(w, "disallowed_flag",
-				fmt.Sprintf("language %q does not support build flags", req.Language))
+			writeError(w, "disallowed_flag", fmt.Sprintf("language %q does not support build flags", req.Language))
 			return
 		}
 		if err := validate.ValidateFlags(req.Build.Flags, lang.Build.FlagAllowlist); err != nil {
@@ -184,28 +171,39 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// ── 8. Acquire concurrency semaphore (queues; never rejects) ────────────
+	// 7. Validate test count
+	if len(req.Tests) < 1 || len(req.Tests) > h.cfg.MaxTests {
+		writeError(w, "invalid_test_count", fmt.Sprintf("test count must be between 1 and %d", h.cfg.MaxTests))
+		return
+	}
+
+	// 8. Acquire concurrency slot (blocking queue)
 	h.sem <- struct{}{}
 	defer func() { <-h.sem }()
 
-	// ── 9. Track stats ───────────────────────────────────────────────────────
+	// Track stats
 	atomic.AddInt64(&h.st.InFlightJobs, 1)
 	defer atomic.AddInt64(&h.st.InFlightJobs, -1)
 	atomic.AddInt64(&h.st.JobsTotal, 1)
 
-	// ── 10. Build runner request and delegate execution to runner.RunSandbox ─
+	// 9. Call runner.RunSandbox
 	runnerReq := toRunnerRequest(req)
 	result, err := runner.RunSandbox(lang, runnerReq)
 	if err != nil {
 		atomic.AddInt64(&h.st.JobsFailedInternal, 1)
 		h.st.SetLastError(time.Now())
-		writeJSON(w, http.StatusInternalServerError,
-			errorResponse{Code: "internal_error", Message: err.Error()})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]any{
+			"error": errorResponse{Code: "internal_error", Message: err.Error()},
+		})
 		return
 	}
 
-	// ── 11. Map runner result → HTTP response ────────────────────────────────
-	writeJSON(w, http.StatusOK, toHTTPResponse(result))
+	// 10. Respond 200 with result (never 5xx for user-code failure)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(toHTTPResponse(result))
 }
 
 // ---------------------------------------------------------------------------
@@ -234,8 +232,9 @@ func toRunnerRequest(req RunRequest) runner.RunRequest {
 		pc := &runner.PhaseConfig{Flags: req.Build.Flags}
 		if req.Build.Limits != nil {
 			pc.Limits = config.ResourceLimits{
-				WallTimeS: req.Build.Limits.WallTimeS,
-				MemoryKB:  req.Build.Limits.MemoryKB,
+				WallTimeS:    req.Build.Limits.WallTimeS,
+				MemoryKB:     req.Build.Limits.MemoryKB,
+				MaxProcesses: req.Build.Limits.MaxProcesses,
 			}
 		}
 		rr.Build = pc
@@ -244,8 +243,9 @@ func toRunnerRequest(req RunRequest) runner.RunRequest {
 	if req.Run != nil && req.Run.Limits != nil {
 		rr.Run = runner.PhaseConfig{
 			Limits: config.ResourceLimits{
-				WallTimeS: req.Run.Limits.WallTimeS,
-				MemoryKB:  req.Run.Limits.MemoryKB,
+				WallTimeS:    req.Run.Limits.WallTimeS,
+				MemoryKB:     req.Run.Limits.MemoryKB,
+				MaxProcesses: req.Run.Limits.MaxProcesses,
 			},
 		}
 	}

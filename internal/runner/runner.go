@@ -113,11 +113,20 @@ func buildNsjailArgs(jailDir string, limits config.ResourceLimits, cmd string, c
 	if memoryKB <= 0 {
 		memoryKB = 256 * 1024 // 256 MiB default
 	}
+	memoryMB := memoryKB / 1024
+	if memoryMB <= 0 {
+		memoryMB = 1
+	}
+	maxProcesses := limits.MaxProcesses
+	if maxProcesses <= 0 {
+		maxProcesses = 64
+	}
 
 	args := []string{
 		"--mode", "o", // one-shot: exit after child finishes
 		"--time_limit", strconv.Itoa(wallTimeS),
-		"--rlimit_as", strconv.Itoa(memoryKB),
+		"--rlimit_as", strconv.Itoa(memoryMB),
+		"--rlimit_nproc", strconv.Itoa(maxProcesses),
 		"--max_cpus", "1",
 		"--log_fd", "3", // redirect nsjail internal logs to fd 3 (discarded)
 		"--bindmount_ro", "/usr:/usr",
