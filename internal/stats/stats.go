@@ -1,52 +1,38 @@
 package stats
 
 import (
+	"sync"
 	"sync/atomic"
+	"time"
 )
 
-// Stats holds atomic job counters
 type Stats struct {
-	totalJobs   int64
-	successJobs int64
-	failedJobs  int64
+	InFlightJobs       int64
+	JobsTotal          int64
+	JobsFailedInternal int64
+
+	mu                  sync.Mutex
+	LastInternalErrorAt time.Time
 }
 
-// NewStats creates a new Stats instance
-func NewStats() *Stats {
-	return &Stats{}
+func (s *Stats) IncrInflight() {
+	atomic.AddInt64(&s.InFlightJobs, 1)
 }
 
-// IncrementJobs increments the total job counter
-func (s *Stats) IncrementJobs() {
-	atomic.AddInt64(&s.totalJobs, 1)
+func (s *Stats) DecrInflight() {
+	atomic.AddInt64(&s.InFlightJobs, -1)
 }
 
-// IncrementSuccess increments the success counter
-func (s *Stats) IncrementSuccess() {
-	atomic.AddInt64(&s.successJobs, 1)
+func (s *Stats) IncrTotal() {
+	atomic.AddInt64(&s.JobsTotal, 1)
 }
 
-// IncrementFailed increments the failed counter
-func (s *Stats) IncrementFailed() {
-	atomic.AddInt64(&s.failedJobs, 1)
+func (s *Stats) IncrFailed() {
+	atomic.AddInt64(&s.JobsFailedInternal, 1)
 }
 
-// TotalJobs returns the total number of jobs
-func (s *Stats) TotalJobs() int64 {
-	return atomic.LoadInt64(&s.totalJobs)
-}
-
-// SuccessJobs returns the number of successful jobs
-func (s *Stats) SuccessJobs() int64 {
-	return atomic.LoadInt64(&s.successJobs)
-}
-
-// FailedJobs returns the number of failed jobs
-func (s *Stats) FailedJobs() int64 {
-	return atomic.LoadInt64(&s.failedJobs)
-}
-
-// Summary returns a string summary of stats
-func (s *Stats) Summary() string {
-	return ""
+func (s *Stats) SetLastError(t time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.LastInternalErrorAt = t
 }
