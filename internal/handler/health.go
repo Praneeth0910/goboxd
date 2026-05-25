@@ -15,6 +15,19 @@ import (
 	"github.com/thesouldev/goboxd/internal/stats"
 )
 
+// writeJSON writes an indented JSON response (human-readable in browser).
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		http.Error(w, `{"error":"internal json error"}`, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(status)
+	w.Write(b)
+	w.Write([]byte("\n"))
+}
+
 // HealthHandler manages the health, readiness, and info checks.
 type HealthHandler struct {
 	buildVersion string
@@ -83,14 +96,7 @@ func (h *HealthHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 		"languages": langResp,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if !allOK {
-		w.WriteHeader(http.StatusServiceUnavailable)
-	} else {
-		w.WriteHeader(http.StatusOK)
-	}
-
-	json.NewEncoder(w).Encode(resp)
+	writeJSON(w, status, resp)
 }
 
 // Info handlers types
@@ -219,7 +225,5 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 		Stats: statsInfo,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	writeJSON(w, http.StatusOK, resp)
 }
