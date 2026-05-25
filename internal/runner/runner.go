@@ -225,14 +225,14 @@ func expandArgs(args []string, sourcePath, artifactPath string, flags []string) 
 
 // statusPrecedence maps each result status to a severity level (higher = worse).
 var statusPrecedence = map[string]int{
-	status.Accepted:                0,
-	status.OutputWhitespaceMismatch: 1,
-	status.WrongOutput:             2,
-	status.TimeExceeded:            3,
-	status.MemoryExceeded:          4,
-	status.RuntimeError:            5,
-	status.BuildFailed:             6,
-	status.InternalError:           7,
+	status.StatusAccepted:                0,
+	status.StatusOutputWhitespaceMismatch: 1,
+	status.StatusWrongOutput:             2,
+	status.StatusTimeExceeded:            3,
+	status.StatusMemoryExceeded:          4,
+	status.StatusRuntimeError:            5,
+	status.StatusBuildFailed:             6,
+	status.StatusInternalError:           7,
 }
 
 // worstStatus returns whichever of a, b has the higher precedence.
@@ -260,7 +260,7 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 	// ── 1. Create isolated jail directory ────────────────────────────────────
 	jailDir, cleanup, err := sandbox.NewJailDir(os.TempDir())
 	if err != nil {
-		return RunResult{Status: status.InternalError}, fmt.Errorf("failed to create jail dir: %w", err)
+		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("failed to create jail dir: %w", err)
 	}
 	defer cleanup()
 
@@ -274,7 +274,7 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 	}
 	sourcePath := filepath.Join(jailDir, sourceFilename)
 	if err := os.WriteFile(sourcePath, []byte(req.Source), 0644); err != nil {
-		return RunResult{Status: status.InternalError}, fmt.Errorf("failed to write source: %w", err)
+		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("failed to write source: %w", err)
 	}
 
 	// ── 3. Build step (compiled languages only) ───────────────────────────────
@@ -319,10 +319,10 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 			buildRes.Status = "failed"
 			notExec := make([]TestResult, len(req.Tests))
 			for i := range notExec {
-				notExec[i] = TestResult{Status: status.NotExecuted}
+				notExec[i] = TestResult{Status: status.StatusNotExecuted}
 			}
 			return RunResult{
-				Status: status.BuildFailed,
+				Status: status.StatusBuildFailed,
 				Build:  buildRes,
 				Tests:  notExec,
 			}, nil
@@ -332,7 +332,7 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 
 	// ── 4. Run each test case ─────────────────────────────────────────────────
 	testResults := make([]TestResult, 0, len(req.Tests))
-	overallStatus := status.Accepted
+	overallStatus := status.StatusAccepted
 
 	for _, tc := range req.Tests {
 		tr := runTestCase(lang, jailDir, sourceFilename, req, tc)
@@ -388,15 +388,15 @@ func runTestCase(
 	var testStatus string
 	switch {
 	case timedOut:
-		testStatus = status.TimeExceeded
+		testStatus = status.StatusTimeExceeded
 	case runErr != nil:
-		testStatus = status.RuntimeError
+		testStatus = status.StatusRuntimeError
 	case outStr == tc.ExpectedStdout:
-		testStatus = status.Accepted
+		testStatus = status.StatusAccepted
 	case strings.TrimSpace(outStr) == strings.TrimSpace(tc.ExpectedStdout):
-		testStatus = status.OutputWhitespaceMismatch
+		testStatus = status.StatusOutputWhitespaceMismatch
 	default:
-		testStatus = status.WrongOutput
+		testStatus = status.StatusWrongOutput
 	}
 
 	return TestResult{

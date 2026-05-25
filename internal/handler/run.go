@@ -109,11 +109,6 @@ func writeError(w http.ResponseWriter, code, message string) {
 	json.NewEncoder(w).Encode(errorResponse{Code: code, Message: message})
 }
 
-func writeJSON(w http.ResponseWriter, httpStatus int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(httpStatus)
-	json.NewEncoder(w).Encode(v)
-}
 
 // ---------------------------------------------------------------------------
 // Run — HTTP handler (validation + stats only; execution delegated to runner)
@@ -285,8 +280,8 @@ func toHTTPResponse(r runner.RunResult) RunResponse {
 	}
 
 	// Treat overall "not_executed" (all tests skipped due to build failure)
-	if r.Status == status.BuildFailed {
-		resp.Status = status.BuildFailed
+	if r.Status == status.StatusBuildFailed {
+		resp.Status = status.StatusBuildFailed
 	}
 
 	return resp

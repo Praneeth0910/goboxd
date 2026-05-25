@@ -51,6 +51,5 @@ We evaluated three approaches:
 - **Option C:** Implement nsjail integration directly within the existing handler functions.
 We chose Option A to prevent parallel/duplicate code paths, guarantee that the new sandbox logic is fully exercised by tests, and enforce clean separation of concerns.
 
-
 **What we learned:**
 When adding a "core logic" function to a layer below an existing handler, always check whether the handler already owns that logic. If it does, the right move is to extract and wire — not add alongside.
