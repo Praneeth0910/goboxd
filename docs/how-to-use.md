@@ -17,16 +17,36 @@ The sandbox prevents malicious code from:
 
 ## 🛠️ Prerequisites
 
-To follow this guide, you only need three tools installed on your computer:
-1. **Docker**: Runs the sandbox environment.
-2. **cURL**: Sends requests to the sandbox API.
-3. **jq**: (Optional but recommended) Formats and colors the sandbox outputs in your terminal.
+To follow this guide, you need the following tools installed on your computer:
+1. **Git**: To clone the project repository.
+2. **Docker**: Runs the sandbox environment.
+3. **cURL**: Sends requests to the sandbox API.
+4. **jq**: (Optional but recommended) Formats and colors the sandbox outputs in your terminal.
 
 ---
 
-## 🏃 Step 1: Start the Sandbox
+## 📥 Step 1: Clone the Repository & Build the Image
 
-First, let's start the sandbox server using Docker. Open your terminal and run the following command:
+To test `goboxd` locally, first clone the repository and build the Docker image.
+
+### 1. Clone the project
+Open your terminal and run:
+```bash
+git clone https://github.com/Praneeth0910/goboxd.git
+cd goboxd
+```
+
+### 2. Build the Docker image
+Build the sandbox image using the provided `Makefile`:
+```bash
+make build
+```
+
+---
+
+## 🏃 Step 2: Start the Sandbox
+
+Now, let's start the sandbox server using Docker. Open your terminal and run the following command:
 
 ```bash
 docker run -d \
@@ -64,7 +84,7 @@ Every request needs a JSON body containing three main pieces of information:
 
 ---
 
-## 🐍 Step 2: Running a Python Program
+## 🐍 Step 3: Running a Python Program
 
 Let's execute a simple Python script that calculates the area of a circle.
 
@@ -117,7 +137,7 @@ You will receive a response like this:
 
 ---
 
-## 🔨 Step 3: Running a C++ Program (with Compilation)
+## 🔨 Step 4: Running a C++ Program (with Compilation)
 
 Unlike Python, C++ must be compiled before it can run. The sandbox handles this automatically in two phases: **Build** (compilation) and **Run** (execution).
 
@@ -174,7 +194,7 @@ In the response, you will notice an extra `build` field:
 
 ---
 
-## 🛡️ Step 4: Testing Security Boundaries
+## 🛡️ Step 5: Testing Security Boundaries
 
 The sandbox is configured to reject malicious actions automatically. Let's test two common security rules:
 
@@ -220,7 +240,7 @@ curl -s -X POST http://localhost:8080/run \
 
 ---
 
-## 🧹 Step 5: Clean Up
+## 🧹 Step 6: Clean Up
 
 When you are done experimenting, you can stop and remove the sandbox container with:
 
@@ -243,4 +263,3 @@ docker stop goboxd-service && docker rm goboxd-service
 
 ---
 
-🎉 **Congratulations! You have successfully mastered the basics of sandboxed code execution using goboxd!**
