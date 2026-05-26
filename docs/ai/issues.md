@@ -131,3 +131,17 @@ Added `runPhase` type (`phaseBuild` / `phaseRun`) to `runCommand` to select the 
 
 **What we learned:**
 When using nsjail `--chroot`, always think in two coordinate systems: the *host* path (where the file is on disk) and the *jail* path (how the process inside nsjail sees it). They differ by exactly `jailDir` as a prefix. Compilers also need `PATH` explicitly set — nsjail does not inherit the parent environment by default. Build and run phases have different isolation requirements: build needs a writable output dir (use `--bindmount rw + --chroot /`), run needs a locked-down chroot (`--chroot jailDir`).
+
+## May 26, 2026 - Unbounded child output: OOM risk fixed with CapReader
+
+**What we were trying to do:**
+Prevent a runaway child process from crashing the server by writing gigabytes to stdout/stderr (risking OOM).
+
+**What went wrong:**
+The initial code read the full child output into memory, so a malicious or buggy program could exhaust RAM.
+
+**How we resolved it:**
+We wrapped the process pipes with `CapReader`, which limits output to 1 MiB and appends a truncation marker if exceeded. This guarantees memory safety for all jobs, no matter how much output they produce.
+
+**What we learned:**
+Always cap untrusted process output. Even a single line of code can prevent a major denial-of-service risk.
