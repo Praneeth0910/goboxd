@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -47,6 +49,33 @@ func main() {
 	slog.Info("sweeping orphaned sandbox directories")
 	runner.SweepOrphanedDirectories(os.TempDir(), 10*time.Minute)
 
+	// Read GOBOXD_MAX_CONCURRENT from env, fall back to runtime.NumCPU()
+	maxConcurrent := runtime.NumCPU()
+	if v := os.Getenv("GOBOXD_MAX_CONCURRENT"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil && val > 0 {
+			maxConcurrent = val
+		}
+	}
+	cfg.MaxConcurrent = maxConcurrent
+
+	// Concurrency Limiting Tradeoffs:
+	// 1. sync.Mutex:
+	//    - Only allows a concurrency limit of 1 (strictly serial execution).
+	//    - Does not support arbitrary bounded concurrency (N > 1) natively.
+	// 2. Worker Pool:
+	//    - Requires managing a pool of worker goroutines and a job queue channel.
+	//    - Introduces complexity in shutdown coordination, task routing, and handling timeouts.
+	//    - Redundant here because Go's standard HTTP server (`net/http`) already spawns
+	//      and manages a goroutine per incoming request.
+	// 3. Channel Semaphore (Chosen):
+	//    - Simple, elegant, and leverages Go's native channel blocking semantics.
+	//    - By using a buffered channel `sem := make(chan struct{}, maxConcurrent)`, each HTTP
+	//      request goroutine can block on `sem <- struct{}{}`.
+	//    - This naturally queues requests when the limit is reached without requiring extra
+	//      goroutines, workers, or complex job dispatching.
+	//    - It prevents goroutine leaks as long as we properly release resources using `defer`.
+	sem := make(chan struct{}, maxConcurrent)
+
 	// Run startup probes
 	slog.Info("running startup probes")
 	nsjailProbe := runner.ProbeNsjail()
@@ -55,7 +84,7 @@ func main() {
 		langProbes[langID] = runner.ProbeLanguage(langCfg)
 	}
 	healthHandler := handler.NewHealthHandler(version, commit, nsjailProbe, langProbes, cfg, st)
-	runHandler := handler.NewRunHandler(cfg, st)
+	runHandler := handler.NewRunHandler(cfg, st, sem)
 
 	// Setup router
 	r := chi.NewRouter()
