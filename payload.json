@@ -1,0 +1,11 @@
+{
+  "language": "cpp",
+  "source": "#include <iostream>\n#include <vector>\n#include <random>\n#include <cmath>\n#include <iomanip>\n\nint main() {\n    // 1. Set up the random number generator (Modern C++ approach)\n    std::random_device rd;\n    std::mt19937 gen(rd());\n    std::uniform_int_distribution<> distrib(1, 50);\n\n    const int NUM_VALUES = 10;\n    std::vector<int> radius_array;\n    std::vector<double> areas_array;\n\n    // Generate 10 random radius values\n    for (int i = 0; i < NUM_VALUES; ++i) {\n        radius_array.push_back(distrib(gen));\n    }\n\n    // 2. Calculate the area for each radius\n    // std::acos(-1.0) is a standard way to get a highly precise value for Pi\n    const double PI = std::acos(-1.0); \n    \n    for (int r : radius_array) {\n        areas_array.push_back(PI * std::pow(r, 2));\n    }\n\n    // 3. Display the results\n    std::cout << \"Radius | Area\\n\";\n    std::cout << \"--------------------\\n\";\n    \n    for (size_t i = 0; i < radius_array.size(); ++i) {\n        std::cout << std::setw(6) << radius_array[i] << \" | \"\n                  << std::fixed << std::setprecision(2) << areas_array[i] << \"\\n\";\n    }\n\n    return 0;\n}",
+  "source_filename": "solution.cpp",
+  "tests": [
+    {
+      "stdin": "",
+      "expected_stdout": ""
+    }
+  ]
+}

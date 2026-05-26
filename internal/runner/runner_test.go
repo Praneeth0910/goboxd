@@ -130,3 +130,27 @@ func TestCapReaderWithDefaultMaxOutputBytes(t *testing.T) {
 		t.Fatalf("output should end with truncation marker")
 	}
 }
+
+func TestFilterStderr(t *testing.T) {
+	input := "/usr/sbin/nsjail: /lib/x86_64-linux-gnu/libnl-3.so.200: no version information available (required by /usr/sbin/nsjail)\n" +
+		"/usr/sbin/nsjail: /lib/x86_64-linux-gnu/libnl-route-3.so.200: no version information available (required by /usr/sbin/nsjail)\n" +
+		"actual error message\n" +
+		"another error message"
+
+	expected := "\n\nactual error message\nanother error message"
+
+	got := filterStderr(input)
+	if got != expected {
+		t.Errorf("filterStderr(%q) = %q; want %q", input, got, expected)
+	}
+
+	// Test fully warning input
+	warningInput := "/usr/sbin/nsjail: /lib/x86_64-linux-gnu/libnl-3.so.200: no version information available (required by /usr/sbin/nsjail)\n" +
+		"/usr/sbin/nsjail: /lib/x86_64-linux-gnu/libnl-route-3.so.200: no version information available (required by /usr/sbin/nsjail)\n"
+	expectedWarning := "\n\n"
+	gotWarning := filterStderr(warningInput)
+	if gotWarning != expectedWarning {
+		t.Errorf("filterStderr(%q) = %q; want %q", warningInput, gotWarning, expectedWarning)
+	}
+}
+
