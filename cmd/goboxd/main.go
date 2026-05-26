@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/thesouldev/goboxd/internal/config"
 	"github.com/thesouldev/goboxd/internal/handler"
+	mw "github.com/thesouldev/goboxd/internal/middleware"
 	"github.com/thesouldev/goboxd/internal/runner"
 	"github.com/thesouldev/goboxd/internal/stats"
 )
@@ -86,9 +87,9 @@ func main() {
 	healthHandler := handler.NewHealthHandler(version, commit, nsjailProbe, langProbes, cfg, st)
 	runHandler := handler.NewRunHandler(cfg, st, sem)
 
-	// Setup router
+	// Setup router with structured logging and recovery
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(mw.Logger) // Custom structured JSON logger (replaces chi's middleware.Logger)
 	r.Use(middleware.Recoverer)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {

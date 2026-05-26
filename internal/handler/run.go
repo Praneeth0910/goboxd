@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/thesouldev/goboxd/internal/config"
+	"github.com/thesouldev/goboxd/internal/middleware"
 	"github.com/thesouldev/goboxd/internal/runner"
 	"github.com/thesouldev/goboxd/internal/stats"
 	"github.com/thesouldev/goboxd/internal/status"
@@ -110,7 +111,6 @@ func writeError(w http.ResponseWriter, code, message string) {
 	})
 }
 
-
 // ---------------------------------------------------------------------------
 // Run — HTTP handler (validation + stats only; execution delegated to runner)
 // ---------------------------------------------------------------------------
@@ -141,6 +141,9 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "unknown_language", fmt.Sprintf("language %q is not configured", req.Language))
 		return
 	}
+
+	// Store language in request context for middleware logging
+	r = middleware.SetLanguage(r, req.Language)
 
 	// 4. Validate source_filename
 	if req.SourceFilename != "" {
@@ -210,6 +213,9 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	// Store job status in request context for middleware logging
+	r = middleware.SetJobStatus(r, result.Status)
 
 	// 10. Respond 200 with result (never 5xx for user-code failure)
 	w.Header().Set("Content-Type", "application/json")

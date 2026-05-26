@@ -104,7 +104,6 @@ func (h *HealthHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, httpStatus, resp)
 }
 
-
 // Info handlers types
 type BuildInfo struct {
 	Version   string `json:"version"`
@@ -170,13 +169,13 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 	langs := make([]LanguageInfo, 0, len(h.cfg.Languages))
 	for id, lang := range h.cfg.Languages {
 		probe := h.langProbes[id]
-		
+
 		limits := DefaultRunLimits{
 			WallTimeS:    lang.Run.Limits.WallTimeS,
 			MemoryKB:     lang.Run.Limits.MemoryKB,
 			MaxProcesses: lang.Run.Limits.MaxProcesses,
 		}
-		
+
 		langs = append(langs, LanguageInfo{
 			ID:               id,
 			Name:             lang.Name,
@@ -184,7 +183,7 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 			DefaultRunLimits: limits,
 		})
 	}
-	
+
 	// Sort languages by ID to make JSON response deterministic
 	sort.Slice(langs, func(i, j int) bool {
 		return langs[i].ID < langs[j].ID
