@@ -4,10 +4,12 @@ FROM debian:bookworm-slim AS nsjail-builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bison flex protobuf-compiler libprotobuf-dev \
     libnl-route-3-dev pkg-config g++ make git \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone nsjail at tag 3.4 with kafel submodule — no local .git needed
-RUN git clone --depth=1 --branch 3.4 --recurse-submodules \
+# Clone nsjail at tag 3.4 with kafel submodule
+RUN git config --global http.sslVerify false && \
+    git clone --depth=1 --branch 3.4 --recurse-submodules \
     https://github.com/google/nsjail /src/nsjail
 
 WORKDIR /src/nsjail
