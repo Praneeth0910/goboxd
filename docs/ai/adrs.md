@@ -75,3 +75,23 @@ Implemented Phase-Specific nsjail Arguments in `runner.go` (`buildNsjailBuildArg
 - All integration tests pass, including C++ compilation and Python execution.
 - Security boundary is maintained: user code executes completely restricted within `jailDir`.
 - The runner layer now explicitly understands `phaseBuild` vs `phaseRun` isolation requirements, avoiding conflating compiler needs with untrusted-code restrictions.
+
+---
+
+## golangci-lint v1.x for Stable Linter Configuration
+
+**Context**: Static analysis tools need a stable configuration format. `.golangci.yml` was written for golangci-lint v1.x (the long-term stable version used by most Go projects). When v2 was released, the configuration format changed and is not backward-compatible by default.
+
+**Options considered**:
+1. Update `.golangci.yml` to v2 format: Learn new schema, rewrite all linter settings, test compatibility
+2. Install v1.x binary: Keep existing config, maintain stability across team environments
+3. Add `version: "2"` flag to config: Quick patch but risks subtle v2-specific behavior differences
+
+**Decision**: Install golangci-lint v1.64.1 (stable) via official binary installer. The config file stays as-is (v1 format), ensuring consistent linting behavior across local and CI environments.
+
+**Consequences**:
+- Config remains unchanged and stable
+- All linter settings work as documented
+- No surprises from v2 format migrations
+- Installation via binary (not snap) avoids confinement overhead
+- Team members must use v1.x; document in CONTRIBUTING guide if needed

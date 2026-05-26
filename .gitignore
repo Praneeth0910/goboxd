@@ -37,3 +37,7 @@ server.log
 nsjail/
 contextmedia_AIagents/
 *.Zone.Identifier
+
+# Local compiled binaries and scripts
+nsjail
+test_endpoints*.sh

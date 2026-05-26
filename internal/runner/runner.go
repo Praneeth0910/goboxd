@@ -51,8 +51,8 @@ type TestCase struct {
 type RunRequest struct {
 	Language         string
 	Source           string
-	SourceFilename   string   // validated by handler before passing here
-	ArtifactFilename string   // validated by handler before passing here
+	SourceFilename   string // validated by handler before passing here
+	ArtifactFilename string // validated by handler before passing here
 	Build            *PhaseConfig
 	Run              PhaseConfig
 	Tests            []TestCase
@@ -297,14 +297,14 @@ func expandArgs(args []string, sourcePath, artifactPath string, flags []string) 
 
 // statusPrecedence maps each result status to a severity level (higher = worse).
 var statusPrecedence = map[string]int{
-	status.StatusAccepted:                0,
+	status.StatusAccepted:                 0,
 	status.StatusOutputWhitespaceMismatch: 1,
-	status.StatusWrongOutput:             2,
-	status.StatusTimeExceeded:            3,
-	status.StatusMemoryExceeded:          4,
-	status.StatusRuntimeError:            5,
-	status.StatusBuildFailed:             6,
-	status.StatusInternalError:           7,
+	status.StatusWrongOutput:              2,
+	status.StatusTimeExceeded:             3,
+	status.StatusMemoryExceeded:           4,
+	status.StatusRuntimeError:             5,
+	status.StatusBuildFailed:              6,
+	status.StatusInternalError:            7,
 }
 
 // worstStatus returns whichever of a, b has the higher precedence.

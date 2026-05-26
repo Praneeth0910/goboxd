@@ -1,56 +1,45 @@
-# golangci-lint configuration for goboxd
+# golangci-lint v1.64.x configuration for goboxd
 # Go 1.22+ systems project with security focus
 
 run:
   timeout: 5m
   go: '1.22'
-  build-tags:
-    - ""
 
-# Define which linters to enable/disable
 linters:
   enable:
-    # Enabled linters
     - asasalint        # Find misuse of sync/atomic
-    - bidichk          # Check for dangerous unicode bidirectional characters
-    - bodyclose        # Ensures HTTP response bodies are closed
-    - decorder         # Checks declaration order
-    - dogsled          # Prevents blank identifier assignments
-    - dupword          # Finds duplicate words in comments
+    - bidichk          # Check dangerous unicode bidirectional characters
+    - bodyclose        # Ensure HTTP response bodies are closed
+    - decorder         # Check declaration order
+    - dogsled          # Prevent blank identifier assignments
     - errcheck         # Unchecked error returns
-    - errorlint        # Identifies improper error wrapping
-    - gocritic         # Opinionated Go code style checks
+    - errorlint        # Improper error wrapping
     - gofmt            # Enforce gofmt formatting
     - govet            # Official Go vet
     - ineffassign      # Ineffectual assignments
     - loggercheck      # Incorrect logging calls
-    - misspell         # Spelling errors in comments and identifiers
+    - misspell         # Spelling errors in comments
     - prealloc         # Preallocate slices when possible
     - staticcheck      # Advanced static analysis
-    - tenv             # t.Setenv() instead of os.Setenv()
     - typecheck        # Type checking
     - unconvert        # Unnecessary type conversions
     - unused           # Unused code detection
     - whitespace       # Whitespace issues
     - gosimple         # Simplify code
+    - gocritic         # Opinionated Go code style checks
 
   disable:
-    # Disabled to reduce false positives for systems project
-    - wrapcheck        # Too strict for internal error handling
-    - exhaustive       # Not needed for this use case
-    - sqlc             # No SQL in this project
-    - cyclop           # Cyclomatic complexity (reasonable for systems code)
-    - dupl             # Duplicate code (acceptable at module boundaries)
-    - forbidigo        # Allow print/fmt usage in specific contexts
+    - wrapcheck        # Too strict for internal errors
+    - exhaustive       # Not needed here
+    - cyclop           # Cyclomatic complexity (systems code can exceed)
+    - dupl             # Duplicate code (acceptable at boundaries)
+    - forbidigo        # Allow print/fmt in specific contexts
     - gocognit         # Cognitive complexity (systems code unavoidably complex)
-    - gocyclo          # Cyclomatic complexity (systems code can exceed limits)
-    - gomoddirectives  # Not needed
+    - gocyclo          # Cyclomatic complexity (systems code can exceed)
     - lll              # Line length (we use editor wrapping)
     - mnd              # Magic numbers (legitimate in systems code)
     - varnamelen       # Variable name length (ok for single-use iterators)
-    - weirdlinter      # No specific needs
 
-# Per-linter configuration
 linters-settings:
   gocritic:
     enabled-tags:
@@ -59,40 +48,36 @@ linters-settings:
       - performance
       - experimental
     disabled-checks:
-      - commentedOutCode    # Legitimate for reference code
-      - hugeParam           # OK for nsjail config structs
+      - commentedOutCode
+      - hugeParam
 
   errcheck:
     check-type-assertions: true
     check-blank: true
     exclude-functions:
-      - io.Copy          # Acceptable data loss in some contexts
-      - fmt.Fprint       # Logging failures are non-critical
+      - io.Copy
+      - fmt.Fprint
 
   staticcheck:
-    # Use all checks
     checks: ["all"]
 
   gosimple:
     checks: ["all"]
 
   unused:
-    check-exported: false  # Allow exported but unused (public API)
+    check-exported: false
 
   govet:
     enable:
       - all
     disable:
-      - shadow           # Allow shadowing for clarity in some cases
+      - shadow
 
 issues:
   exclude-rules:
-    # Allow blank identifier in for loops
     - source: "var _ ="
-    - linters:
+      linters:
+        - govet
+    - source: "^_"
+      linters:
         - unparam
-      source: "^_"
-
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0

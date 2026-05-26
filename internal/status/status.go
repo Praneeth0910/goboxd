@@ -14,7 +14,7 @@ const (
 	StatusRuntimeError             = "runtime_error"
 	StatusNotExecuted              = "not_executed"
 	StatusInternalError            = "internal_error"
-	
+
 	// Build specific statuses
 	StatusOK     = "ok"
 	StatusFailed = "failed"
@@ -44,10 +44,17 @@ func CompareOutput(actual, expected string) string {
 	if actual == expected {
 		return StatusAccepted
 	}
-	if strings.TrimSpace(actual) == strings.TrimSpace(expected) {
+	// Normalize all whitespace (leading, trailing, internal runs of spaces/tabs/newlines)
+	// by splitting on whitespace and rejoining with single spaces.
+	if normalizeWhitespace(actual) == normalizeWhitespace(expected) {
 		return StatusOutputWhitespaceMismatch
 	}
 	return StatusWrongOutput
+}
+
+// normalizeWhitespace collapses all whitespace runs into single spaces and trims.
+func normalizeWhitespace(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }
 
 // StatusFromExitCode computes test status from execution results.

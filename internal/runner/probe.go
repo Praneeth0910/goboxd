@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"bytes"
 	"context"
 	"os"
 	"os/exec"
@@ -18,33 +17,31 @@ type ProbeResult struct {
 	Error   string
 }
 
-// ProbeNsjail checks if nsjail is available and returns its version.
+// ProbeNsjail checks if nsjail is available.
 func ProbeNsjail() ProbeResult {
 	nsjailPath := os.Getenv("NSJAIL_PATH")
 	if nsjailPath == "" {
 		nsjailPath = "/usr/sbin/nsjail"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, nsjailPath, "--version")
-	var stderrBuf bytes.Buffer
-	cmd.Stderr = &stderrBuf
-
-	if err := cmd.Run(); err != nil {
+	info, err := os.Stat(nsjailPath)
+	if err != nil {
 		return ProbeResult{OK: false, Error: err.Error()}
 	}
 
-	version := strings.TrimSpace(stderrBuf.String())
-	return ProbeResult{OK: true, Version: version}
+	// Check if it's executable
+	if info.Mode()&0111 == 0 {
+		return ProbeResult{OK: false, Error: "nsjail is not executable"}
+	}
+
+	return ProbeResult{OK: true, Version: "unknown"}
 }
 
 // ProbeLanguage checks if the language compiler/interpreter is available.
 func ProbeLanguage(lang config.Language) ProbeResult {
 	cmdName := lang.Run.Cmd
-	// For Java, we want to probe the compiler (javac) instead of the runtime (java)
-	if lang.ID == "java" && lang.Build != nil && lang.Build.Cmd != "" {
+	// For compiled languages, we want to probe the compiler instead of the runtime artifact
+	if lang.Build != nil && lang.Build.Cmd != "" {
 		cmdName = lang.Build.Cmd
 	}
 

@@ -12,16 +12,16 @@ import (
 // that are older than maxAge. Called once at startup.
 //
 // Why we use mtime-based age rather than trying to match against currently running processes:
-// 1. Accuracy & Simplicity: Matching folders against currently running processes (e.g., checking active PIDs)
-//    is highly prone to false positives/negatives due to PID reuse (PID rollover) by the OS. A PID that was used
-//    by a crashed goboxd instance hours ago might now belong to an entirely unrelated system process, making the
-//    folder appear active when it is actually an orphan.
-// 2. Cross-Host/Server Isolation: If the filesystem is shared or if server instances are quickly restarted,
-//    relying on local process lists can lead to premature or incorrect cleanup decisions.
-// 3. Absolute Bounds on Lifetime: In a code-execution sandbox, runs have a strict execution time limit (typically
-//    seconds). If a directory's modification time (mtime) is significantly older than the maximum possible execution
-//    age (e.g., 10 minutes), it is mathematically guaranteed to be orphaned. Even if a process was somehow still alive,
-//    it has exceeded its maximum wall-time limit and should be cleaned up regardless.
+//  1. Accuracy & Simplicity: Matching folders against currently running processes (e.g., checking active PIDs)
+//     is highly prone to false positives/negatives due to PID reuse (PID rollover) by the OS. A PID that was used
+//     by a crashed goboxd instance hours ago might now belong to an entirely unrelated system process, making the
+//     folder appear active when it is actually an orphan.
+//  2. Cross-Host/Server Isolation: If the filesystem is shared or if server instances are quickly restarted,
+//     relying on local process lists can lead to premature or incorrect cleanup decisions.
+//  3. Absolute Bounds on Lifetime: In a code-execution sandbox, runs have a strict execution time limit (typically
+//     seconds). If a directory's modification time (mtime) is significantly older than the maximum possible execution
+//     age (e.g., 10 minutes), it is mathematically guaranteed to be orphaned. Even if a process was somehow still alive,
+//     it has exceeded its maximum wall-time limit and should be cleaned up regardless.
 func SweepOrphanedDirectories(baseDir string, maxAge time.Duration) {
 	entries, err := os.ReadDir(baseDir)
 	if err != nil {

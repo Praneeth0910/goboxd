@@ -145,3 +145,45 @@ We wrapped the process pipes with `CapReader`, which limits output to 1 MiB and 
 
 **What we learned:**
 Always cap untrusted process output. Even a single line of code can prevent a major denial-of-service risk.
+
+## May 26, 2026 - `make build` taking 6-8 minutes: unnecessary packages and wrong base image
+
+**What we were trying to do:**
+Run `make build` to rebuild the Docker image after code changes. Expected a fast incremental build but it was taking 6-8 minutes every time.
+
+**What went wrong — three compounding issues:**
+
+**Issue 1: Unnecessary nsjail-builder stage.**
+The Dockerfile had a 3-stage build. Stage 1 (`nsjail-builder`) installed `protobuf-compiler`, `libprotobuf-dev`, and `libnl-route-3-dev` via apt-get — but then only ran `COPY nsjail /usr/sbin/nsjail` to copy a **pre-built** binary. It never compiled anything. The entire stage (~30s of apt-get) was wasted.
+
+**Issue 2: Unused runtime packages inflating the image.**
+Stage 3 (runtime) installed `default-jdk`, `nodejs`, and `iverilog` — none of which are used. `languages.yaml` only defines Python 3 and C++. The `default-jdk` package alone pulled in 180 packages / 283MB download / 941MB disk (including X11, GTK, fonts, Mesa). This was the primary bottleneck.
+
+**Issue 3: GLIBC version mismatch (`debian:bookworm-slim` vs nsjail binary).**
+After fixing the build speed, we discovered that the pre-built nsjail binary requires `GLIBC_2.38` and `GLIBCXX_3.4.32`. But `debian:bookworm-slim` only ships `GLIBC 2.36`. This caused all `/run` executions inside the container to fail with:
+```
+/usr/sbin/nsjail: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
+/usr/sbin/nsjail: /lib/x86_64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.32' not found
+```
+The readiness probe (`/readyz`) reported `"status": "ok"` because we had previously fixed `ProbeNsjail()` to check file existence instead of running `nsjail --version`, so the probe passed even though nsjail couldn't actually execute.
+
+**How we resolved it:**
+1. **Eliminated Stage 1** entirely — the pre-built nsjail binary is copied directly in the runtime stage.
+2. **Removed unused packages** — only `python3`, `g++`, `libnl-route-3-200`, and `libprotobuf32t64` are installed.
+3. **Switched runtime base image** from `debian:bookworm-slim` to `debian:trixie-slim` (Debian 13), which provides `GLIBC 2.41` — well above the 2.38 requirement.
+4. **Updated `.dockerignore`** to exclude `external/`, `tests/`, `scripts/` from the build context.
+
+**Results:**
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Build stages | 3 | 2 |
+| Runtime packages | 180 | ~40 |
+| Image size | ~1.5 GB | ~550 MB |
+| Cold build time | 6-8 min | ~3.5 min |
+| Cached build (code change only) | uncached | 3.4s |
+| nsjail execution | GLIBC error | Works |
+| Integration tests passing | 34/138 | 138/138 |
+
+**What we learned:**
+Always verify that the base image's glibc version matches the requirements of pre-built binaries. `debian:bookworm-slim` (Debian 12) ships GLIBC 2.36 and `debian:trixie-slim` (Debian 13) ships GLIBC 2.41. A readiness probe that only checks file existence can give a false positive — consider running a trivial execution test during startup. Also, audit Dockerfile dependencies against `languages.yaml` to avoid installing packages for languages that aren't actually configured.

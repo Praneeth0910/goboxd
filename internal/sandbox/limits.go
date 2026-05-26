@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	DefaultMaxSourceBytes = 256 * 1024       // 256 KiB
-	DefaultMaxStdinBytes  = 64 * 1024        // 64 KiB
-	DefaultMaxOutputBytes = 1 * 1024 * 1024  // 1 MiB
+	DefaultMaxSourceBytes = 256 * 1024      // 256 KiB
+	DefaultMaxStdinBytes  = 64 * 1024       // 64 KiB
+	DefaultMaxOutputBytes = 1 * 1024 * 1024 // 1 MiB
 	TruncationMarker      = "\n[output truncated]"
 )
 

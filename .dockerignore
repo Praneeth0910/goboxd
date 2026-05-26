@@ -1,0 +1,14 @@
+docs/
+*.md
+*.pdf
+.git/
+.github/
+.vscode/
+.gitlab-ci.yml
+.golangci.yml
+contextmedia_Alagents/
+*.log
+tmp/
+tests/
+scripts/
+external/
