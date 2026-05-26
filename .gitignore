@@ -35,3 +35,5 @@ external/nsjail/
 contextmedia_AIagents/goboxd
 server.log
 nsjail/
+contextmedia_AIagents/
+*.Zone.Identifier
