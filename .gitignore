@@ -32,4 +32,6 @@ go.work.sum
 .vscode/
 nsjail/
 external/nsjail/
-contextmedia_AIagents/
+contextmedia_AIagents/goboxd
+server.log
+nsjail/
