@@ -101,17 +101,17 @@ func nsjailAvailable() bool {
 	return err == nil
 }
 
-// buildNsjailArgs constructs the nsjail argument list that wraps a child command.
-// jailDir is the per-request chroot. limits drives time/memory flags.
-// cmd + cmdArgs are the actual program to run inside the jail.
-func buildNsjailArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string) []string {
+// buildNsjailRunArgs constructs nsjail args for the RUN phase.
+// --chroot is set to jailDir, so all paths inside the jail are jail-relative.
+// E.g. source file at jailDir/solution.py is accessed as /solution.py inside the jail.
+func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string) []string {
 	wallTimeS := limits.WallTimeS
 	if wallTimeS <= 0 {
 		wallTimeS = 10
 	}
 	memoryKB := limits.MemoryKB
 	if memoryKB <= 0 {
-		memoryKB = 256 * 1024 // 256 MiB default
+		memoryKB = 256 * 1024
 	}
 	memoryMB := memoryKB / 1024
 	if memoryMB <= 0 {
@@ -123,16 +123,17 @@ func buildNsjailArgs(jailDir string, limits config.ResourceLimits, cmd string, c
 	}
 
 	args := []string{
-		"--mode", "o", // one-shot: exit after child finishes
+		"--mode", "o",
 		"--time_limit", strconv.Itoa(wallTimeS),
 		"--rlimit_as", strconv.Itoa(memoryMB),
 		"--rlimit_nproc", strconv.Itoa(maxProcesses),
 		"--max_cpus", "1",
-		"--log_fd", "3", // redirect nsjail internal logs to fd 3 (discarded)
+		"--log_fd", "3",
 		"--bindmount_ro", "/usr:/usr",
 		"--bindmount_ro", "/lib:/lib",
 		"--bindmount_ro", "/lib64:/lib64",
 		"--bindmount_ro", "/bin:/bin",
+		"--env", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		"--chroot", jailDir,
 		"--",
 		cmd,
@@ -140,9 +141,64 @@ func buildNsjailArgs(jailDir string, limits config.ResourceLimits, cmd string, c
 	return append(args, cmdArgs...)
 }
 
+// buildNsjailBuildArgs constructs nsjail args for the BUILD phase.
+// The chroot is set to / (host root) with a writable bind-mount of jailDir
+// so the compiler can write the artifact directly into jailDir using absolute paths.
+// PATH is injected so collect2/ld can be found by g++.
+func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string) []string {
+	wallTimeS := limits.WallTimeS
+	if wallTimeS <= 0 {
+		wallTimeS = 30
+	}
+	memoryKB := limits.MemoryKB
+	if memoryKB <= 0 {
+		memoryKB = 1024 * 1024
+	}
+	memoryMB := memoryKB / 1024
+	if memoryMB <= 0 {
+		memoryMB = 1
+	}
+	maxProcesses := limits.MaxProcesses
+	if maxProcesses <= 0 {
+		maxProcesses = 100
+	}
+
+	args := []string{
+		"--mode", "o",
+		"--time_limit", strconv.Itoa(wallTimeS),
+		"--rlimit_as", strconv.Itoa(memoryMB),
+		"--rlimit_nproc", strconv.Itoa(maxProcesses),
+		"--max_cpus", "1",
+		"--log_fd", "3",
+		"--bindmount_ro", "/usr:/usr",
+		"--bindmount_ro", "/lib:/lib",
+		"--bindmount_ro", "/lib64:/lib64",
+		"--bindmount_ro", "/bin:/bin",
+		// rw bind-mount so compiler can write the output artifact
+		"--bindmount", jailDir + ":" + jailDir,
+		"--env", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"--chroot", "/",
+		"--cwd", jailDir,
+		"--",
+		cmd,
+	}
+	return append(args, cmdArgs...)
+}
+
+// runPhase is the phase indicator passed to runCommand.
+type runPhase int
+
+const (
+	phaseBuild runPhase = iota
+	phaseRun
+)
+
 // runCommand executes either a plain command or an nsjail-wrapped command
 // depending on nsjail availability. It returns stdout, stderr, elapsed ms,
 // and whether the context deadline was exceeded.
+// phase selects the nsjail argument set:
+//   - phaseBuild: chroot=/, rw bindmount of jailDir, absolute paths (for compilers)
+//   - phaseRun:   chroot=jailDir, jail-relative paths (for user programs)
 func runCommand(
 	ctx context.Context,
 	jailDir string,
@@ -150,11 +206,18 @@ func runCommand(
 	cmdStr string,
 	cmdArgs []string,
 	stdin io.Reader,
+	phase runPhase,
 ) (stdout string, stderr string, elapsedMS int64, timedOut bool, err error) {
 	var cmd *exec.Cmd
 
 	if nsjailAvailable() {
-		njArgs := buildNsjailArgs(jailDir, limits, cmdStr, cmdArgs)
+		var njArgs []string
+		switch phase {
+		case phaseBuild:
+			njArgs = buildNsjailBuildArgs(jailDir, limits, cmdStr, cmdArgs)
+		default:
+			njArgs = buildNsjailRunArgs(jailDir, limits, cmdStr, cmdArgs)
+		}
 		cmd = exec.CommandContext(ctx, nsjailPath(), njArgs...)
 		// Discard fd 3 (nsjail log) by pointing it at /dev/null
 		devNull, _ := os.Open(os.DevNull)
@@ -165,9 +228,9 @@ func runCommand(
 	} else {
 		// Fallback: direct execution (dev/CI environments without nsjail)
 		cmd = exec.CommandContext(ctx, cmdStr, cmdArgs...)
+		cmd.Dir = jailDir
 	}
 
-	cmd.Dir = jailDir
 	if stdin != nil {
 		cmd.Stdin = stdin
 	}
@@ -300,6 +363,7 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 		if req.Build != nil {
 			userFlags = req.Build.Flags
 		}
+		// Build phase uses chroot=/ so absolute host paths are correct inside the jail.
 		buildArgs := expandArgs(lang.Build.Args, sourcePath, artifactPath, userFlags)
 
 		// Determine build limits (request overrides config defaults)
@@ -316,7 +380,7 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 		defer cancel()
 
 		outStr, errStr, elapsedMS, _, buildErr := runCommand(ctx, jailDir, buildLimits,
-			lang.Build.Cmd, buildArgs, nil)
+			lang.Build.Cmd, buildArgs, nil, phaseBuild)
 
 		buildRes = BuildResult{
 			Stdout:     outStr,
@@ -368,12 +432,16 @@ func runTestCase(
 	if artifactFilename == "" {
 		artifactFilename = "solution"
 	}
-	artifactPath := filepath.Join(jailDir, artifactFilename)
 
-	runArgs := expandArgs(lang.Run.Args, filepath.Join(jailDir, sourceFilename), artifactPath, nil)
+	// Run phase: nsjail uses --chroot=jailDir, so paths inside the jail are
+	// relative to jailDir root.  E.g. jailDir/solution.py → /solution.py inside jail.
+	jailSourcePath := "/" + sourceFilename
+	jailArtifactPath := "/" + artifactFilename
 
-	// Expand {{artifact}} and {{source}} in the run command using bare filenames
-	// (relative to jailDir) so that "./{{artifact}}" → "./solution" resolves correctly.
+	runArgs := expandArgs(lang.Run.Args, jailSourcePath, jailArtifactPath, nil)
+
+	// Expand {{artifact}} and {{source}} in the run command itself.
+	// "./{{artifact}}" → "./solution" stays correct (relative path in chroot).
 	runCmd := lang.Run.Cmd
 	runCmd = strings.ReplaceAll(runCmd, config.TemplateArtifact, artifactFilename)
 	runCmd = strings.ReplaceAll(runCmd, config.TemplateSource, sourceFilename)
@@ -392,7 +460,7 @@ func runTestCase(
 
 	stdinReader := strings.NewReader(tc.Stdin)
 	outStr, errStr, elapsedMS, timedOut, runErr := runCommand(
-		ctx, jailDir, runLimits, runCmd, runArgs, stdinReader)
+		ctx, jailDir, runLimits, runCmd, runArgs, stdinReader, phaseRun)
 
 	var testStatus string
 	switch {

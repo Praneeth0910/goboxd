@@ -49,3 +49,29 @@ This document contains the Architecture Decision Records (ADRs) for the AI proje
 - **Performance:** O(1) naming with no retry loops or filesystem checks
 - **Tradeoff:** Directory names are less human-readable than UUIDs, but clarity is not a security requirement
 - **Lifecycle:** Each request immediately defers cleanup via `defer cleanup()`, ensuring even panics trigger RemoveAll
+
+---
+
+## Separate Chroot Strategies for Build vs Run Phases in nsjail
+
+**Context**: 
+Compiled languages (like C++) require a build step to produce an executable, while interpreted languages (like Python) only require a run step. nsjail provides isolation via `--chroot`. Initially, we used `--chroot jailDir` for both build and run phases, and expanded source file placeholders to absolute host paths (e.g., `/tmp/goboxd-1-xxx/solution.py`). This failed completely:
+1. When `--chroot jailDir` is used, the root of the filesystem *inside* the jail is `jailDir`. Passing an absolute host path like `/tmp/...` makes nsjail look for `/tmp/...` *inside* the jail, which doesn't exist, leading to `runtime_error` (`No such file or directory`).
+2. Compilers (like `g++`) need a writable output directory to place artifacts, but nsjail mounts `--chroot` as read-only by default.
+3. Compilers invoke other binaries (like `collect2` invoking `ld`) and require a valid `PATH` environment variable, which nsjail strips by default.
+
+**Options considered**:
+1. Mount the entire host filesystem (`--chroot /`) for both phases: Compromises security for the run phase.
+2. Bind mount the host `/tmp` directory into the jail: Leaks host state and allows cross-container access.
+3. Use two different nsjail configurations based on the phase (Build vs. Run).
+
+**Decision**: 
+Implemented Phase-Specific nsjail Arguments in `runner.go` (`buildNsjailBuildArgs` and `buildNsjailRunArgs`):
+- **Build Phase**: Uses `--chroot /` (host root) with `--cwd jailDir` and a writable `--bindmount jailDir:jailDir`. This allows compilers to use absolute host paths and write artifacts correctly.
+- **Run Phase**: Uses `--chroot jailDir` (maximum isolation) with `--cwd /`. Path placeholders expand to jail-relative absolute paths (e.g., `/solution.py`, `/solution`).
+- Both phases inject `--env PATH=...` to ensure toolchains can find internal binaries like `ld`.
+
+**Consequences**: 
+- All integration tests pass, including C++ compilation and Python execution.
+- Security boundary is maintained: user code executes completely restricted within `jailDir`.
+- The runner layer now explicitly understands `phaseBuild` vs `phaseRun` isolation requirements, avoiding conflating compiler needs with untrusted-code restrictions.

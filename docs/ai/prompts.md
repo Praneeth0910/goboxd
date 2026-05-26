@@ -154,3 +154,18 @@ Add a comment at the top explaining that adding a new language = one YAML block
 - More complex build/run steps (e.g., multi-stage builds, dependency installation)
 - Environment variable support in commands
 - Per-language custom error messages or validation rules
+
+## 26-05-26 - Debugging nsjail and Path Expansion
+**Prompt**: "fix all the fialed tests one by one" (followed by iterative terminal debugging and execution context investigation).
+
+**Response Summary**: The agent methodically diagnosed the reason behind the `runtime_error` in all integration tests involving execution (Python and C++). By isolating the execution environment and running manual `nsjail` processes with varying configurations inside the Docker container, the agent identified that the `runner.go` was constructing absolute host paths (e.g., `/tmp/goboxd-123/solution.py`) but placing them into a jail whose root (`--chroot`) was set to that exact `/tmp/goboxd-123` directory. This caused file-not-found errors because the path inside the jail was just `/solution.py`. Furthermore, C++ compilation was failing because it lacked a writable artifact output directory and the necessary `PATH` environment variables to find `collect2` and `ld`. The agent separated the execution logic into `buildNsjailBuildArgs` (using host root) and `buildNsjailRunArgs` (using jail root) and correctly injected the `PATH` environment variable.
+
+**What we used / didnt used**:
+**Used**:
+- Interactive debugging with `docker exec` to run manual `nsjail` tests and isolate root causes.
+- Structuring `runner.go` to explicitly differentiate between a `phaseBuild` and `phaseRun` execution context.
+- Use of `chroot=/` combined with `--bindmount` and `--cwd` for the compilation phase to allow standard compiler pathing while maintaining isolation.
+- Passing `PATH` explicitly via `--env` to the `nsjail` arguments.
+**Not Used**:
+- Bypassing nsjail entirely (maintained strict sandbox requirements).
+- Changing the overall architecture of how requests were submitted (the fix was entirely isolated to `runner.go`).

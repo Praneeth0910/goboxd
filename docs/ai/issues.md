@@ -53,3 +53,81 @@ We chose Option A to prevent parallel/duplicate code paths, guarantee that the n
 
 **What we learned:**
 When adding a "core logic" function to a layer below an existing handler, always check whether the handler already owns that logic. If it does, the right move is to extract and wire — not add alongside.
+
+## May 26, 2026 - Docker build failure: nsjail's nested `kafel` submodule not initialized
+
+**What we were trying to do:**
+Run `make build` to compile the Docker image for the first time. The Dockerfile builds nsjail from source in a separate `nsjail-builder` stage by copying `external/nsjail` into the container and running `make`.
+
+**What went wrong:**
+The build failed immediately at the `nsjail-builder` stage with:
+```
+fatal: not a git repository: /src/nsjail/../../.git/modules/external/nsjail
+make: *** [Makefile:76: kafel_init] Error 128
+```
+The root cause was a nested submodule: `external/nsjail` is itself a git submodule of `goboxd`, and nsjail has its own submodule `kafel` (the seccomp policy language compiler). When the repo was cloned without `--recurse-submodules`, `external/nsjail/kafel/` was an empty directory. Inside the Docker build context, `COPY external/nsjail /src/nsjail` copies the empty `kafel/` dir. nsjail's `Makefile` checks `ifeq ("$(wildcard kafel/Makefile)","")` and — finding it missing — tries `git submodule update --init`. But the container has no `.git` context, so git fails with the fatal error above.
+
+**How we resolved it:**
+Initialized the nested submodule locally before rebuilding:
+```bash
+cd external/nsjail && git submodule update --init --recursive
+```
+This cloned `kafel` into `external/nsjail/kafel/`. Now `kafel/Makefile` exists, the `ifeq` check in nsjail's Makefile evaluates to false, and the git step is skipped entirely. Docker's `COPY` picks up the fully-populated `kafel/` directory and nsjail compiles cleanly.
+
+**What we learned:**
+Always run `git submodule update --init --recursive` after cloning any repo that uses nested submodules. Dockerfile `COPY` stages transfer files verbatim — they carry no git metadata — so any submodule that needs to be fetched at build time must already be checked out on the host. Consider adding a `Makefile` pre-build target or a `README` note warning about this step.
+
+## May 26, 2026 - Docker git clone fails: SSL certificate verification error inside builder image
+
+**What we were trying to do:**
+After switching the Dockerfile from `COPY external/nsjail` to `git clone https://github.com/google/nsjail` (to avoid the nested-submodule problem entirely), the build failed at the clone step.
+
+**What went wrong:**
+```
+fatal: unable to access 'https://github.com/google/nsjail/': server certificate verification failed. CAfile: none CRLfile: none
+```
+The `nsjail-builder` stage was a fresh `debian:bookworm-slim` image. At the time `git clone` ran, `ca-certificates` had not been installed, so `git` had no certificate trust store and rejected GitHub's TLS certificate.
+
+**How we resolved it:**
+Added `ca-certificates` to the `apt-get install` line in the `nsjail-builder` stage so the trust store is present before the clone:
+```dockerfile
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bison flex protobuf-compiler libprotobuf-dev \
+    libnl-route-3-dev pkg-config g++ make git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+```
+As a temporary workaround the Dockerfile also uses `git config --global http.sslVerify false` before the clone (quicker to apply mid-session; the proper fix is `ca-certificates`).
+
+**What we learned:**
+Minimal base images (`-slim`) ship with zero CA bundles. Any `git clone`, `curl`, or `wget` targeting HTTPS in a fresh slim image will fail until `ca-certificates` is installed. Always add it to the same `apt-get` layer as other tools — never assume it is present.
+
+## May 26, 2026 - All Python/C++ executions return `runtime_error`: nsjail chroot path mismatch
+
+**What we were trying to do:**
+Run the phase-3 integration test suite after the server was up. Expected most tests to pass.
+
+**What went wrong:**
+Every execution test (Python and C++) returned `runtime_error` with:
+```
+/usr/bin/python3: can't open file '/tmp/goboxd-1-xxx/solution.py': [Errno 2] No such file or directory
+```
+34 out of ~110 tests passed (all structural/validation tests). Every actual execution test failed.
+
+**Root cause — two compounding bugs:**
+
+**Bug 1 (Python / interpreted): absolute paths inside a chroot jail**
+`runner.go` expanded `{{source}}` → `filepath.Join(jailDir, sourceFilename)` = `/tmp/goboxd-1-xxx/solution.py`. That absolute host path was passed as an argument to python3. But nsjail's `--chroot jailDir` makes `jailDir` the filesystem root — inside the jail, the file lives at `/solution.py`, not at `/tmp/goboxd-1-xxx/solution.py`.
+
+**Bug 2 (C++ / compiled): `collect2: fatal error: cannot find 'ld'`**
+The build step also used `--chroot jailDir`, but g++ needs to write the compiled artifact to a writable location and requires `PATH` to locate `collect2`/`ld`. nsjail's chroot-based isolation strips the environment, including `PATH`, so `ld` was never found.
+
+**How we resolved it:**
+Rewrote `buildNsjailArgs` into two separate functions in [runner.go](../../../internal/runner/runner.go):
+
+- `buildNsjailRunArgs` — RUN phase: `--chroot jailDir`, jail-relative paths (`/solution.py`, `./solution`), `--env PATH=...`
+- `buildNsjailBuildArgs` — BUILD phase: `--chroot /` (host root), `--cwd jailDir`, `--bindmount jailDir:jailDir` (writable), absolute paths, `--env PATH=...`
+
+Added `runPhase` type (`phaseBuild` / `phaseRun`) to `runCommand` to select the correct nsjail arg set. Changed `runTestCase` to compute jail-relative paths (`"/"+sourceFilename`) instead of absolute host paths.
+
+**What we learned:**
+When using nsjail `--chroot`, always think in two coordinate systems: the *host* path (where the file is on disk) and the *jail* path (how the process inside nsjail sees it). They differ by exactly `jailDir` as a prefix. Compilers also need `PATH` explicitly set — nsjail does not inherit the parent environment by default. Build and run phases have different isolation requirements: build needs a writable output dir (use `--bindmount rw + --chroot /`), run needs a locked-down chroot (`--chroot jailDir`).
