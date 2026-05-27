@@ -121,3 +121,18 @@ We replaced the default `http.ListenAndServe` call with an explicitly configured
 
 ### Location
 `cmd/goboxd/main.go:108`
+
+---
+
+## 9. Symlink attack on jail source file (TOCTOU)
+**Category:** Filesystem / Privilege Escalation
+**Severity:** High
+
+### What the attack is
+A Time-Of-Check to Time-Of-Use (TOCTOU) vulnerability occurs when an attacker replaces the jail directory or the source file path with a symlink pointing outside the sandbox *before* the source file is written. Because standard functions like `os.WriteFile` silently follow symlinks, the application could be tricked into writing the attacker-controlled source code to arbitrary host paths (e.g., overwriting `~/.ssh/authorized_keys`).
+
+### Our fix in Go
+We replaced the `os.WriteFile` call with a safe open using `os.OpenFile` and the flags `os.O_WRONLY | os.O_CREATE | os.O_EXCL | syscall.O_NOFOLLOW`. This prevents following symlinks and ensures we only create a new, distinct file. After writing, we also call `os.Lstat` on the path and verify `mode.IsRegular()` to mathematically guarantee the file is a regular file and not a symlink.
+
+### Location
+`internal/runner/runner.go:356-368`

@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/thesouldev/goboxd/internal/config"
@@ -353,8 +354,21 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 		sourceFilename = "solution"
 	}
 	sourcePath := filepath.Join(jailDir, sourceFilename)
-	if err := os.WriteFile(sourcePath, []byte(req.Source), 0644); err != nil {
+	// Safely open the file to prevent TOCTOU symlink attacks
+	f, err := os.OpenFile(sourcePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0644)
+	if err != nil {
+		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("failed to safely open source file: %w", err)
+	}
+	if _, err := f.Write([]byte(req.Source)); err != nil {
+		f.Close()
 		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("failed to write source: %w", err)
+	}
+	f.Close()
+
+	// Verify the written path is a regular file
+	info, err := os.Lstat(sourcePath)
+	if err != nil || !info.Mode().IsRegular() {
+		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("source file is not a regular file")
 	}
 
 	// ── 3. Build step (compiled languages only) ───────────────────────────────
