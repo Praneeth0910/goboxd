@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -41,7 +42,7 @@ func TestCapReaderBoundsOutput(t *testing.T) {
 	n, err := io.Copy(&output, capReader)
 
 	// Verify no read error (CapReader.Read should not error on normal flow)
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		t.Fatalf("unexpected error reading from CapReader: %v", err)
 	}
 
@@ -85,7 +86,7 @@ func TestCapReaderNoTruncationWhenExactLimit(t *testing.T) {
 	var output bytes.Buffer
 	_, err := io.Copy(&output, capReader)
 
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -115,7 +116,7 @@ func TestCapReaderWithDefaultMaxOutputBytes(t *testing.T) {
 	var output bytes.Buffer
 	_, err := io.Copy(&output, capReader)
 
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 

@@ -15,7 +15,10 @@ type ValidationError struct {
 
 // Error implements the error interface for ValidationError.
 func (e ValidationError) Error() string {
-	data, _ := json.Marshal(e)
+	data, err := json.Marshal(e)
+	if err != nil {
+		return fmt.Sprintf("internal: failed to marshal error: %v", err)
+	}
 	return string(data)
 }
 

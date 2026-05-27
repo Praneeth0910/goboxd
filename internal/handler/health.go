@@ -24,8 +24,14 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 		return
 	}
 	w.WriteHeader(status)
-	w.Write(b)
-	w.Write([]byte("\n"))
+	if _, err := w.Write(b); err != nil {
+		http.Error(w, "write error", http.StatusInternalServerError)
+		return
+	}
+	if _, err := w.Write([]byte("\n")); err != nil {
+		http.Error(w, "write error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // HealthHandler manages the health, readiness, and info checks.
@@ -193,7 +199,7 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 	var stat syscall.Statfs_t
 	var diskFree uint64
 	if err := syscall.Statfs(os.TempDir(), &stat); err == nil {
-		diskFree = uint64(stat.Bavail) * uint64(stat.Bsize)
+		diskFree = stat.Bavail * uint64(stat.Bsize)
 	}
 
 	// Prepare Stats

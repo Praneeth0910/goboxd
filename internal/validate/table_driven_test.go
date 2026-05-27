@@ -144,7 +144,9 @@ func BenchmarkValidateFilename(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, fn := range filenames {
-			ValidateFilename(fn)
+			if err := ValidateFilename(fn); err != nil {
+				_ = err
+			}
 		}
 	}
 }
@@ -162,7 +164,9 @@ func BenchmarkValidateFlags(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, flags := range flagSets {
-			ValidateFlags(flags, allowlist)
+			if err := ValidateFlags(flags, allowlist); err != nil {
+				_ = err
+			}
 		}
 	}
 }
