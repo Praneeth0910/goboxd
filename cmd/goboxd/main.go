@@ -105,8 +105,22 @@ func main() {
 
 	// Start server
 	addr := fmt.Sprintf(":%d", *port)
+	
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: r,
+		// Prevent slowloris by limiting time to read the entire request body
+		ReadTimeout: 15 * time.Second,
+		// Prevent slowloris by limiting time to read headers
+		ReadHeaderTimeout: 5 * time.Second,
+		// WriteTimeout must be > max nsjail wall time of ~10s + build time ~30s (at least 2x max possible job duration)
+		WriteTimeout: 120 * time.Second,
+		// Prevent idle connections from lingering indefinitely
+		IdleTimeout: 60 * time.Second,
+	}
+
 	slog.Info("starting server", "addr", addr)
-	if err := http.ListenAndServe(addr, r); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		slog.Error("server error", "error", err)
 		os.Exit(1)
 	}

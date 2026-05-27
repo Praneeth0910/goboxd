@@ -104,3 +104,20 @@ We sweep and remove all orphaned jail directories at startup and on a schedule, 
 
 ### Location
 `internal/runner/sweep.go:25`
+
+---
+
+## Extra Security Fixes which I felt important to close
+
+## 8. Slowloris / slow-body HTTP attack
+**Category:** Network / Denial of Service
+**Severity:** High
+
+### What the attack is
+A slowloris or slow-body attack occurs when an attacker connects to the server and sends data extremely slowly (or sends partial headers). Because the default `http.Server` has no timeouts, these connections remain open indefinitely, eventually exhausting all available file descriptors and server connections.
+
+### Our fix in Go
+We replaced the default `http.ListenAndServe` call with an explicitly configured `http.Server` struct that enforces strict `ReadTimeout`, `ReadHeaderTimeout`, `WriteTimeout`, and `IdleTimeout` bounds to safely drop stalled connections.
+
+### Location
+`cmd/goboxd/main.go:108`
