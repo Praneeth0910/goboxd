@@ -26,10 +26,3 @@ debian:trixie-slim specifically for GLIBC 2.41 — the pre-built nsjail binary
 needs it and bookworm only ships 2.36. The readyz probe was returning "ok" 
 the whole time because I was checking file existence, not actually running 
 nsjail. Silent failures are worse than loud ones.
-
-## What I'd do differently
-
-Build nsjail from source inside the Dockerfile instead of copying a pre-built 
-binary. It makes the build slower but removes the GLIBC dependency entirely 
-and guarantees it runs on any amd64 machine. I made this tradeoff for speed 
-during the hackathon — it's the right call to reverse before production.

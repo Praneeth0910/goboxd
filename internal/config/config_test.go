@@ -68,8 +68,8 @@ func TestLoadLanguagesYAML(t *testing.T) {
 	if cpp.Build.Cmd != "/usr/bin/g++" {
 		t.Errorf("Expected build.cmd /usr/bin/g++, got %s", cpp.Build.Cmd)
 	}
-	if cpp.Build.Limits.WallTimeS != 3 {
-		t.Errorf("Expected build wall_time_s=3, got %d", cpp.Build.Limits.WallTimeS)
+	if cpp.Build.Limits.WallTimeS != 10 {
+		t.Errorf("Expected build wall_time_s=10, got %d", cpp.Build.Limits.WallTimeS)
 	}
 	if len(cpp.Build.FlagAllowlist) == 0 {
 		t.Fatal("C++ build should have flag_allowlist")
