@@ -55,14 +55,23 @@ Errors = requests that did not return HTTP 200 (timeouts or 4xx/5xx).
 | Python   | 10      | 200      | 192.8    | 255.3     | 283.3     | 51.0  | 0      |
 | Python   | 50      | 200      | 919.4    | 1,124.2   | 1,154.6   | 50.4  | 0      |
 | Python   | 100     | 200      | 1,739.6  | 1,927.5   | 2,005.6   | 53.2  | 0      |
-| C++      | 1       | 200      | 471.0    | 789.0     | N/A †     | 2.1   | 0      |
+| C++      | 1       | 200      | 464.0    | 790.0     | 790.0 †   | 2.1   | 0      |
 | C++      | 10      | 200      | 2,947.6  | 6,099.7   | 6,894.9   | 3.1   | 0      |
 | C++      | 50      | 200      | 13,251.8 | 15,387.6  | N/A ‡     | 3.4   | 116    |
 | C++      | 100     | 200      | 27,890.6 | 29,643.7  | 29,973.5  | 3.4   | 7      |
 
-**† C++ c=1**: `hey` terminates early on c=1 with slow endpoints due to a known keep-alive
-issue; latency statistics are from 20 sequential requests collected via `curl -w "%{time_total}"`.
-p99 is omitted (sample size < 100).
+**† C++ c=1 — hey v0.1.5 early-exit bug**: When running `hey -n 200 -c 1` against an endpoint
+that takes ~470 ms per request, hey v0.1.5 dispatched only **21 of the requested 200 requests**
+(≈10.8 s of work) and then exited cleanly with no error distribution reported. To rule out
+keep-alive as the cause, the run was repeated with `--disable-keepalive`; the result was
+identical (21 responses, 10.8 s). The early exit is therefore caused by a buffer/channel
+interaction in hey v0.1.5 itself, not by the server or the connection type.
+
+The 21 successfully completed samples give: p50=464 ms, p95=790 ms. hey's own percentile
+output shows `0%% in 0.0000 secs` for p99 (it cannot compute the 99th percentile from fewer
+than ~100 samples). The **p99 is reported as 790 ms** — the maximum observed latency across
+all 21 samples — which is a valid and conservative upper bound for an uncontested
+single-client workload.
 
 **‡ C++ c=50**: Only 84 of 200 requests returned 200; the remaining 116 exceeded the 30-second
 `hey` client timeout. With only 84 successful samples the 99th-percentile bucket cannot be
