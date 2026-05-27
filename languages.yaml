@@ -153,6 +153,78 @@ languages:
         memory_kb: 262144
         max_processes: 100
 
+  rust:
+    id: rust
+    name: Rust
+    source_filename: solution.rs
+    artifact: solution
+    build:
+      cmd: /usr/bin/rustc
+      args:
+        - "-O"
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 10
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 3
+        memory_kb: 524288
+        max_processes: 64
+
+  go:
+    id: go
+    name: Go
+    source_filename: solution.go
+    artifact: solution
+    build:
+      cmd: /usr/bin/go
+      args:
+        - "build"
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 10
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 3
+        memory_kb: 524288
+        max_processes: 64
+
+  kotlin:
+    id: kotlin
+    name: Kotlin
+    source_filename: solution.kt
+    artifact: solution.jar
+    build:
+      cmd: /usr/bin/kotlinc
+      args:
+        - "{{source}}"
+        - "-include-runtime"
+        - "-d"
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 15
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: /usr/bin/java
+      args:
+        - "-jar"
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 5
+        memory_kb: 524288
+        max_processes: 100
+
 max_source_bytes: 262144
 max_tests: 50
 max_concurrent: 0
