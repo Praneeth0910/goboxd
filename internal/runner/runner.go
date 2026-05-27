@@ -211,8 +211,11 @@ func runCommand(
 	cmdArgs []string,
 	stdin io.Reader,
 	phase runPhase,
-) (stdout, stderr string, elapsedMS int64, timedOut bool, err error) {
+) (stdout, stderr string, elapsedMS int64, timedOut bool, err error, memoryExceeded bool) {
 	var cmd *exec.Cmd
+	var nsjailLogReader *os.File
+	var nsjailLogWriter *os.File
+	var pipeErr error
 
 	if nsjailAvailable() {
 		var njArgs []string
@@ -223,13 +226,12 @@ func runCommand(
 			njArgs = buildNsjailRunArgs(jailDir, limits, cmdStr, cmdArgs)
 		}
 		cmd = exec.CommandContext(ctx, nsjailPath(), njArgs...)
-		// Discard fd 3 (nsjail log) by pointing it at /dev/null
-		devNull, err := os.Open(os.DevNull)
-		if err != nil {
-			slog.Error("failed to open /dev/null for nsjail log discard", "error", err)
+		
+		nsjailLogReader, nsjailLogWriter, pipeErr = os.Pipe()
+		if pipeErr == nil {
+			cmd.ExtraFiles = []*os.File{nsjailLogWriter} // becomes fd 3
 		} else {
-			cmd.ExtraFiles = []*os.File{devNull} // becomes fd 3
-			defer devNull.Close()
+			slog.Error("failed to create pipe for nsjail log", "error", pipeErr)
 		}
 	} else {
 		// Fallback: direct execution (dev/CI environments without nsjail)
@@ -245,12 +247,19 @@ func runCommand(
 	outPipe, outErr := cmd.StdoutPipe()
 	errPipe, errErr := cmd.StderrPipe()
 	if outErr != nil || errErr != nil {
-		return "", "", 0, false, fmt.Errorf("failed to create output pipes: stdout_err=%w stderr_err=%w", outErr, errErr)
+		if nsjailLogWriter != nil { nsjailLogWriter.Close() }
+		if nsjailLogReader != nil { nsjailLogReader.Close() }
+		return "", "", 0, false, fmt.Errorf("failed to create output pipes: stdout_err=%w stderr_err=%w", outErr, errErr), false
 	}
 
 	start := time.Now()
 	if startErr := cmd.Start(); startErr != nil {
-		return "", "", 0, false, startErr
+		if nsjailLogWriter != nil { nsjailLogWriter.Close() }
+		if nsjailLogReader != nil { nsjailLogReader.Close() }
+		return "", "", 0, false, startErr, false
+	}
+	if nsjailLogWriter != nil {
+		nsjailLogWriter.Close() // Parent no longer needs the write end
 	}
 
 	// Forcibly close pipes when context expires. This prevents io.Copy from hanging
@@ -259,6 +268,9 @@ func runCommand(
 		<-ctx.Done()
 		outPipe.Close()
 		errPipe.Close()
+		if nsjailLogReader != nil {
+			nsjailLogReader.Close()
+		}
 	}()
 
 	// Read capped stdout and stderr concurrently
@@ -267,11 +279,15 @@ func runCommand(
 
 	var outBuf, errBuf bytes.Buffer
 	var outReadErr, errReadErr error
+	var nsjailLogBuf bytes.Buffer
 
 	done := make(chan struct{})
 	go func() {
 		_, outReadErr = io.Copy(&outBuf, capOut)
 		_, errReadErr = io.Copy(&errBuf, capErr)
+		if nsjailLogReader != nil {
+			io.Copy(&nsjailLogBuf, nsjailLogReader)
+		}
 		close(done)
 	}()
 	<-done
@@ -287,7 +303,21 @@ func runCommand(
 	}
 
 	timedOut = ctx.Err() == context.DeadlineExceeded
-	return outBuf.String(), errBuf.String(), elapsedMS, timedOut, runErr
+	
+	if runErr != nil {
+		if exitErr, ok := runErr.(*exec.ExitError); ok {
+			if exitErr.ExitCode() == 137 {
+				memoryExceeded = true
+			}
+		}
+	}
+	
+	logStr := nsjailLogBuf.String()
+	if strings.Contains(logStr, "signal: 9") || strings.Contains(logStr, "rlimit") {
+		memoryExceeded = true
+	}
+	
+	return outBuf.String(), errBuf.String(), elapsedMS, timedOut, runErr, memoryExceeded
 }
 
 // ---------------------------------------------------------------------------
@@ -429,7 +459,7 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 			time.Duration(buildLimits.WallTimeS+2)*time.Second)
 		defer cancel()
 
-		outStr, errStr, elapsedMS, _, buildErr := runCommand(ctx, jailDir, buildLimits,
+		outStr, errStr, elapsedMS, _, buildErr, _ := runCommand(ctx, jailDir, buildLimits,
 			lang.Build.Cmd, buildArgs, nil, phaseBuild)
 
 		buildRes = BuildResult{
@@ -518,13 +548,15 @@ func runTestCase(
 	defer cancel()
 
 	stdinReader := strings.NewReader(tc.Stdin)
-	outStr, errStr, elapsedMS, timedOut, runErr := runCommand(
+	outStr, errStr, elapsedMS, timedOut, runErr, memoryExceeded := runCommand(
 		ctx, jailDir, runLimits, runCmd, runArgs, stdinReader, phaseRun)
 
 	var testStatus string
 	switch {
 	case timedOut:
 		testStatus = status.StatusTimeExceeded
+	case memoryExceeded:
+		testStatus = status.StatusMemoryExceeded
 	case runErr != nil:
 		testStatus = status.StatusRuntimeError
 	case strings.TrimRight(outStr, "\r\n") == strings.TrimRight(tc.ExpectedStdout, "\r\n"):

@@ -47,8 +47,12 @@ func main() {
 	st := &stats.Stats{}
 
 	// Clean up stale jail directories from the temp directory (using 10 minutes as maxAge)
-	slog.Info("sweeping orphaned sandbox directories")
-	runner.SweepOrphanedDirectories(os.TempDir(), 10*time.Minute)
+	slog.Info("sweeping orphaned sandbox directories in background")
+	go func() {
+		for range time.Tick(10 * time.Minute) {
+			runner.SweepOrphanedDirectories(os.TempDir(), 10*time.Minute)
+		}
+	}()
 
 	// Read GOBOXD_MAX_CONCURRENT from env, fall back to runtime.NumCPU()
 	maxConcurrent := runtime.NumCPU()

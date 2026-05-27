@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"sort"
 	"sync/atomic"
@@ -66,13 +67,27 @@ func (h *HealthHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 	allOK := h.nsjailProbe.OK
 	langResp := make(map[string]map[string]interface{})
 
-	for langID, probe := range h.langProbes {
-		if !probe.OK {
+	for langID := range h.cfg.Languages {
+		lang := h.cfg.Languages[langID]
+		probe := h.langProbes[langID]
+
+		cmdName := lang.Run.Cmd
+		if lang.Build != nil && lang.Build.Cmd != "" {
+			cmdName = lang.Build.Cmd
+		}
+
+		_, err := exec.LookPath(cmdName)
+		ok := err == nil
+		
+		if !ok {
 			allOK = false
+			probe.Error = err.Error()
+		} else {
+			probe.Error = ""
 		}
 
 		m := map[string]interface{}{
-			"ok": probe.OK,
+			"ok": ok,
 		}
 		if probe.Version != "" {
 			m["version"] = probe.Version
