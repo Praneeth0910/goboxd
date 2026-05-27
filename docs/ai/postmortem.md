@@ -1,20 +1,35 @@
-# goboxd Postmortem
+# Postmortem — Team Sudo, GoBoxD Phase 1
 
-## What went well
-- **Isolation Strategy**: Moving from a Python-based shell-execution model to a robust Go-based service utilizing `nsjail` vastly improved security and resource bounds. The containerization approach ensures no direct host execution.
-- **Language Extensibility**: Refactoring language definitions out of the core code and into a plug-and-play `languages.yaml` file made adding new languages (like Java) trivial without recompiling the binary.
-- **Security Enhancements**: 
-  - Path traversal vulnerabilities in `filename.go` were eradicated by strictly rejecting dots, path separators, and absolute paths.
-  - Shell-injection vulnerabilities were removed by using native Go directory functions (`os.MkdirTemp`, `os.RemoveAll`).
-  - Flag injection was mitigated via a strict prefix/suffix allowlist matching algorithm.
+## What actually broke (in order of pain)
 
-## What broke / What we learned
-- **Memory & Resource Exhaustion (OOMs)**: Early implementations read entire `stdin` and process output directly into memory, which would crash the server for infinite loops or massive print statements. **Lesson**: All untrusted pipes must be bounded. We introduced `CapReader` and `http.MaxBytesReader` to strictly bound memory consumption.
-- **Stale Jail Directories**: Initially, jail directories were generated but not always cleaned up when context timeouts or process failures occurred. This caused disk space bloat and potential leakage. **Lesson**: Introduced a dedicated startup sweep loop to clear orphaned instances by age, and rigorously ensured deferred `cleanup()` calls are always executed, even on early returns.
-- **UID Collisions Under Load**: We found that random small integer UIDs for jails collided under heavy concurrent benchmarking (e.g., `hey -c 100`). **Lesson**: Replaced basic randomness with a cryptographically secure, atomic counter + PID suffix scheme (`goboxd-PID-counter-randomHex`) guaranteeing zero collisions globally.
-- **Connection Drops / WSL Stability**: We ran into 'Failed parsing install script output' errors inside VS Code running over WSL due to corrupted journal files. **Lesson**: Environmental instability (unclean Windows shutdowns) impacts the development server. Wrote a `fix-wsl.sh` and documented the need to gracefully `wsl --shutdown`.
+The first two days were mostly fighting the environment, not the problem. 
+WSL kept disconnecting mid-session due to .bashrc printing output that 
+broke the VS Code remote install script. Lost probably 3 hours to that 
+before tracing it to shell startup noise corrupting the IDE's pipe.
 
-## Future Action Items
-- Monitor metrics continuously under extreme loads (concurrency > 100).
-- Integrate an eBPF-based network filter to replace or supplement `nsjail` network restrictions.
-- Consider moving to a purely stateless ephemeral container engine if warmup latency can be kept under 50ms.
+The nsjail chroot coordinate system was the hardest bug. I assumed 
+--chroot jailDir meant I could pass absolute host paths as arguments. 
+Wrong — inside the jail, jailDir IS the root, so /tmp/goboxd-xxx/solution.py 
+doesn't exist; /solution.py does. Every execution test returned runtime_error 
+for two hours before I figured this out. The fix required splitting into 
+two separate nsjail argument builders: one for build (chroot=/, writable 
+bindmount) and one for run (chroot=jailDir, read-only). 
+
+The fork bomb test hung for 10+ minutes for multiple times. I killed nsjail 
+but orphaned child processes held the stdout/stderr pipes open, so cmd.Wait() 
+blocked forever. Fixed by adding a goroutine that closes the pipes on ctx.Done().
+
+## What surprised me
+
+How much the base image matters. Switched from debian:bookworm-slim to 
+debian:trixie-slim specifically for GLIBC 2.41 — the pre-built nsjail binary 
+needs it and bookworm only ships 2.36. The readyz probe was returning "ok" 
+the whole time because I was checking file existence, not actually running 
+nsjail. Silent failures are worse than loud ones.
+
+## What I'd do differently
+
+Build nsjail from source inside the Dockerfile instead of copying a pre-built 
+binary. It makes the build slower but removes the GLIBC dependency entirely 
+and guarantees it runs on any amd64 machine. I made this tradeoff for speed 
+during the hackathon — it's the right call to reverse before production.

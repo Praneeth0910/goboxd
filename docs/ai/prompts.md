@@ -58,7 +58,7 @@ goboxd/
 ├── README.md
 ├── go.mod
 └── go.sum
-**What we used / didnt used**: 
+**What I used / didn't use**: 
 **Used**:
 - Multi-stage Docker builds (3 stages for optimized image)
 - nsjail as git submodule (pinned to tag 3.4)
@@ -79,7 +79,9 @@ goboxd/
 - Distributed execution
 - Job history persistence
 - Request rate limiting
-
+**Correction**: AI returned a list-format YAML; I restructured it to a map keyed by language ID 
+to match config.go's map[string]Language. Also switched from net/http to chi after evaluating 
+routing needs (see adrs.md).
 ## 26-05-26 - Add languages.yaml with python3 and cpp
 **prompt**: "Write a languages.yaml file for goboxd with exactly two language entries for Stage 1:
 
@@ -142,7 +144,7 @@ Add a comment at the top explaining that adding a new language = one YAML block
       memory_kb: 524288
       max_processes: 64
 ```
-**What we used / didnt used**:
+**What I used / didn't use**:
 **Used**:
 - YAML format for language configuration
 - Two language entries: Python 3 and C++
@@ -158,9 +160,9 @@ Add a comment at the top explaining that adding a new language = one YAML block
 ## 26-05-26 - Debugging nsjail and Path Expansion
 **Prompt**: "fix all the fialed tests one by one" (followed by iterative terminal debugging and execution context investigation).
 
-**Response Summary**: The agent methodically diagnosed the reason behind the `runtime_error` in all integration tests involving execution (Python and C++). By isolating the execution environment and running manual `nsjail` processes with varying configurations inside the Docker container, the agent identified that the `runner.go` was constructing absolute host paths (e.g., `/tmp/goboxd-123/solution.py`) but placing them into a jail whose root (`--chroot`) was set to that exact `/tmp/goboxd-123` directory. This caused file-not-found errors because the path inside the jail was just `/solution.py`. Furthermore, C++ compilation was failing because it lacked a writable artifact output directory and the necessary `PATH` environment variables to find `collect2` and `ld`. The agent separated the execution logic into `buildNsjailBuildArgs` (using host root) and `buildNsjailRunArgs` (using jail root) and correctly injected the `PATH` environment variable.
+**Response Summary**: The agent methodically diagnosed the reason behind the `runtime_error` in all integration tests involving execution (Python and C++). By isolating the execution environment and running manual `nsjail` processes with varying configurations inside the Docker container, the agent identified that `runner.go` was constructing absolute host paths (e.g., `/tmp/goboxd-123/solution.py`) but placing them into a jail whose root (`--chroot`) was set to that exact `/tmp/goboxd-123` directory. This caused file-not-found errors because the path inside the jail was just `/solution.py`. Furthermore, C++ compilation was failing because it lacked a writable artifact output directory and the necessary `PATH` environment variables to find `collect2` and `ld`. The agent separated the execution logic into `buildNsjailBuildArgs` (using host root) and `buildNsjailRunArgs` (using jail root) and correctly injected the `PATH` environment variable.
 
-**What we used / didnt used**:
+**What I used / didn't use**:
 **Used**:
 - Interactive debugging with `docker exec` to run manual `nsjail` tests and isolate root causes.
 - Structuring `runner.go` to explicitly differentiate between a `phaseBuild` and `phaseRun` execution context.
