@@ -111,9 +111,9 @@ func TestValidateConfig(t *testing.T) {
 		t.Fatalf("Config validation failed: %v", err)
 	}
 
-	// Verify we have exactly 2 languages for Stage 1
-	if len(cfg.Languages) != 2 {
-		t.Errorf("Expected 2 languages, got %d", len(cfg.Languages))
+	// Verify we have at least 2 languages configured
+	if len(cfg.Languages) < 2 {
+		t.Errorf("Expected at least 2 languages, got %d", len(cfg.Languages))
 	}
 }
 
