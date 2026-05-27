@@ -1,3 +1,5 @@
+//go:build integration
+
 // goboxd_phase2_test.go
 //
 // END-TO-END HTTP TEST SUITE — Phase 1 + Phase 2

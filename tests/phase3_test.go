@@ -1,3 +1,5 @@
+//go:build integration
+
 // phase3_test.go
 //
 // PHASE 3 — INTENSE, COMPREHENSIVE END-TO-END + CONTRACT TEST SUITE
