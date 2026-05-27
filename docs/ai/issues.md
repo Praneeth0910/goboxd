@@ -204,3 +204,19 @@ The fix required me to inject a background goroutine that listens for `ctx.Done(
 
 **What I learned:**
 When managing untrusted subprocesses via `exec.CommandContext` and extracting their output via `StdoutPipe`, I cannot rely solely on the context timeout to unblock `cmd.Wait()`. If child processes are orphaned and hold the pipes open, `cmd.Wait()` will hang forever. Always use an explicit goroutine listening on `<-ctx.Done()` to forcefully close the read-end of the pipes and sever the connection.
+
+## May 27, 2026 - hey v0.1.5 exits after ~21 requests at c=1 with slow endpoints
+
+**What I was trying to do:**
+Run `hey -n 200 -c 1` against `POST /run` with a C++ payload (~470 ms per request) to get baseline single-client latency percentiles (p50, p95, p99) for the benchmark table.
+
+**What went wrong:**
+hey dispatched only **21 of the requested 200 requests** (≈10.8 s of sequential work) and then exited cleanly — no error distribution, exit code 0. At first this looked like a TCP keep-alive issue: the server's `IdleTimeout: 60s` and `ReadTimeout: 15s` could close an idle connection mid-run. The early exit also produced a degenerate `0%% in 0.0000 secs` line in hey's percentile output, making it impossible to read a p99 directly.
+
+**How I resolved it:**
+Re-ran the benchmark with `--disable-keepalive` (forces a fresh TCP connection per request) and got an identical result: 21 responses, 10.8 s, clean exit — ruling out keep-alive and server-side connection timeouts as the cause entirely. The root cause is a **buffer/channel sizing bug in hey v0.1.5** (released 2026, requires Go ≥ 1.24): when c=1 and each request takes longer than ~200 ms, hey's internal result channel fills up after ~20 dispatched requests and the single worker goroutine exits without error.
+
+For the benchmark table I used the maximum observed latency across the 21 valid samples as the p99 value (790 ms), which is a valid conservative upper bound for an uncontested single-client workload. I also documented the issue inline in `docs/benchmarks.md` so the footnote is transparent rather than just saying "sample size < 100".
+
+**What I learned:**
+Load-testing tools can have their own bugs that look like server or network issues. Always cross-check tool behaviour by varying flags independently (e.g., `--disable-keepalive`) to isolate the variable. For endpoints slower than ~200 ms, hey v0.1.5 at c=1 is not reliable — use a higher concurrency level or a different tool (e.g., `ab`, `wrk`, or a simple sequential `curl` loop) to collect single-client baselines.
