@@ -29,7 +29,7 @@ max_tests: 50
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	if err := os.WriteFile(path, []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
 		t.Fatalf("failed to write temp config: %v", err)
 	}
 
@@ -94,7 +94,7 @@ max_tests: 50
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	if err := os.WriteFile(path, []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
 		t.Fatalf("failed to write temp config: %v", err)
 	}
 
@@ -151,7 +151,7 @@ languages:
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	if err := os.WriteFile(path, []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
 		t.Fatalf("failed to write temp config: %v", err)
 	}
 
@@ -178,7 +178,7 @@ max_tests: 50
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	if err := os.WriteFile(path, []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
 		t.Fatalf("failed to write temp config: %v", err)
 	}
 
@@ -208,7 +208,7 @@ max_tests: 50
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	if err := os.WriteFile(path, []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
 		t.Fatalf("failed to write temp config: %v", err)
 	}
 
@@ -229,7 +229,7 @@ languages:
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	if err := os.WriteFile(path, []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
 		t.Fatalf("failed to write temp config: %v", err)
 	}
 
@@ -389,7 +389,7 @@ max_tests: 50
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	if err := os.WriteFile(path, []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
 		t.Fatalf("failed to write temp config: %v", err)
 	}
 
@@ -435,7 +435,7 @@ max_tests: 50
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	if err := os.WriteFile(path, []byte(yaml), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(yaml), 0o644); err != nil {
 		t.Fatalf("failed to write temp config: %v", err)
 	}
 

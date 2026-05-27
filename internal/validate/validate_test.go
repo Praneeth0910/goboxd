@@ -133,11 +133,6 @@ func TestValidateFilenameRejectsLongNames(t *testing.T) {
 }
 
 func TestValidateFilenameAccepts128Chars(t *testing.T) {
-	// 128 characters should be accepted
-	name128 := strings.Repeat("a", 128) + ".py"
-	if len(name128) > 128 {
-		name128 = strings.Repeat("a", 124) + ".py" // Adjust to exactly fit
-	}
 	// Just verify 128-char name without extension works
 	name128exact := strings.Repeat("a", 128)
 	err := ValidateFilename(name128exact)

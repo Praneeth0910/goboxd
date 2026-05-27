@@ -58,7 +58,7 @@ func normalizeWhitespace(s string) string {
 }
 
 // StatusFromExitCode computes test status from execution results.
-func StatusFromExitCode(exitCode int, timedOut bool, memKilled bool) string {
+func StatusFromExitCode(exitCode int, timedOut, memKilled bool) string {
 	if timedOut {
 		return StatusTimeExceeded
 	}

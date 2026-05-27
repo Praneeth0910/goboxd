@@ -173,7 +173,8 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare Languages
 	langs := make([]LanguageInfo, 0, len(h.cfg.Languages))
-	for id, lang := range h.cfg.Languages {
+	for id := range h.cfg.Languages {
+		lang := h.cfg.Languages[id]
 		probe := h.langProbes[id]
 
 		limits := DefaultRunLimits{

@@ -76,7 +76,7 @@ func Load(path string) (*Config, error) {
 		Languages:      make(map[string]Language),
 		MaxSourceBytes: 262144, // 256 KiB
 		MaxTests:       50,
-		MaxConcurrent:  0, // use runtime.NumCPU()
+		MaxConcurrent:  0,  // use runtime.NumCPU()
 		QueueTimeoutS:  30, // 30 seconds default
 	}
 
@@ -137,7 +137,8 @@ func Validate(cfg *Config) error {
 
 	seenIDs := make(map[string]bool)
 
-	for _, lang := range cfg.Languages {
+	for id := range cfg.Languages {
+		lang := cfg.Languages[id]
 		// Check required fields
 		if lang.ID == "" {
 			return fmt.Errorf("validation failed: language has empty id")

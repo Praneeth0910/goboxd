@@ -30,7 +30,7 @@ func ProbeNsjail() ProbeResult {
 	}
 
 	// Check if it's executable
-	if info.Mode()&0111 == 0 {
+	if info.Mode()&0o111 == 0 {
 		return ProbeResult{OK: false, Error: "nsjail is not executable"}
 	}
 

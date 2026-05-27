@@ -16,7 +16,7 @@ var AllowedFlags = map[string][]string{
 // Supports glob-style patterns (e.g. "-std=*" matches "-std=c++17").
 // If allowlist is nil or empty, all flags are rejected with an error.
 // Returns error listing all rejected flags, or nil if all flags are valid.
-func ValidateFlags(flags []string, allowlist []string) error {
+func ValidateFlags(flags, allowlist []string) error {
 	// If no allowlist, reject all flags
 	if len(allowlist) == 0 {
 		if len(flags) == 0 {
