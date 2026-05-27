@@ -7,8 +7,8 @@ import (
 )
 
 type AttackTest struct {
-	Filename  string
-	ShouldFail bool
+	Filename    string
+	ShouldFail  bool
 	Description string
 }
 
@@ -87,7 +87,10 @@ func main() {
 
 		if err != nil {
 			var errJSON validate.ValidationError
-			json.Unmarshal([]byte(err.Error()), &errJSON)
+			if jsonErr := json.Unmarshal([]byte(err.Error()), &errJSON); jsonErr != nil {
+				fmt.Printf("       Error: %s\n", err.Error())
+				continue // skip the errJSON.Code check below
+			}
 			if errJSON.Code != "" {
 				fmt.Printf("       Error: %s\n", errJSON.Message[:min(len(errJSON.Message), 60)])
 			}
@@ -106,13 +109,6 @@ func main() {
 	} else {
 		fmt.Println("\n✅ ALL ATTACKS BLOCKED - NO VULNERABILITIES!")
 	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func truncate(s string, maxLen int) string {
