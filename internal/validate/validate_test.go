@@ -216,8 +216,6 @@ func TestValidateFilenameRealWorldAttacks(t *testing.T) {
 	}
 }
 
-
-
 // ============ ValidateFlags Tests ============
 
 func TestValidateFlagsEmptyAllowlist(t *testing.T) {

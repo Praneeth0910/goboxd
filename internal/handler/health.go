@@ -78,7 +78,7 @@ func (h *HealthHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 
 		_, err := exec.LookPath(cmdName)
 		ok := err == nil
-		
+
 		if !ok {
 			allOK = false
 			probe.Error = err.Error()

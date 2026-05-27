@@ -95,7 +95,6 @@ func ValidateFilename(name string) error {
 	return nil
 }
 
-
 // SafePath validates that a path is within a base directory
 func SafePath(base, target string) error {
 	absBase := filepath.Clean(base)

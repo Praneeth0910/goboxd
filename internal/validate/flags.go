@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-
-
 // ValidateFlags checks each flag against the language's flag_allowlist.
 // Supports glob-style patterns (e.g. "-std=*" matches "-std=c++17").
 // If allowlist is nil or empty, all flags are rejected with an error.
@@ -65,5 +63,3 @@ func matchesAllowlist(flag string, allowlist []string) bool {
 
 	return false
 }
-
-

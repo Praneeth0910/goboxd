@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -203,6 +204,17 @@ const (
 // phase selects the nsjail argument set:
 //   - phaseBuild: chroot=/, rw bindmount of jailDir, absolute paths (for compilers)
 //   - phaseRun:   chroot=jailDir, jail-relative paths (for user programs)
+//
+// CommandResult holds the results of an executed command.
+type CommandResult struct {
+	Stdout         string
+	Stderr         string
+	ElapsedMS      int64
+	TimedOut       bool
+	Error          error
+	MemoryExceeded bool
+}
+
 func runCommand(
 	ctx context.Context,
 	jailDir string,
@@ -211,7 +223,7 @@ func runCommand(
 	cmdArgs []string,
 	stdin io.Reader,
 	phase runPhase,
-) (stdout, stderr string, elapsedMS int64, timedOut bool, err error, memoryExceeded bool) {
+) CommandResult {
 	var cmd *exec.Cmd
 	var nsjailLogReader *os.File
 	var nsjailLogWriter *os.File
@@ -226,7 +238,7 @@ func runCommand(
 			njArgs = buildNsjailRunArgs(jailDir, limits, cmdStr, cmdArgs)
 		}
 		cmd = exec.CommandContext(ctx, nsjailPath(), njArgs...)
-		
+
 		nsjailLogReader, nsjailLogWriter, pipeErr = os.Pipe()
 		if pipeErr == nil {
 			cmd.ExtraFiles = []*os.File{nsjailLogWriter} // becomes fd 3
@@ -247,16 +259,24 @@ func runCommand(
 	outPipe, outErr := cmd.StdoutPipe()
 	errPipe, errErr := cmd.StderrPipe()
 	if outErr != nil || errErr != nil {
-		if nsjailLogWriter != nil { nsjailLogWriter.Close() }
-		if nsjailLogReader != nil { nsjailLogReader.Close() }
-		return "", "", 0, false, fmt.Errorf("failed to create output pipes: stdout_err=%w stderr_err=%w", outErr, errErr), false
+		if nsjailLogWriter != nil {
+			nsjailLogWriter.Close()
+		}
+		if nsjailLogReader != nil {
+			nsjailLogReader.Close()
+		}
+		return CommandResult{Error: fmt.Errorf("failed to create output pipes: stdout_err=%w stderr_err=%w", outErr, errErr)}
 	}
 
 	start := time.Now()
 	if startErr := cmd.Start(); startErr != nil {
-		if nsjailLogWriter != nil { nsjailLogWriter.Close() }
-		if nsjailLogReader != nil { nsjailLogReader.Close() }
-		return "", "", 0, false, startErr, false
+		if nsjailLogWriter != nil {
+			nsjailLogWriter.Close()
+		}
+		if nsjailLogReader != nil {
+			nsjailLogReader.Close()
+		}
+		return CommandResult{Error: startErr}
 	}
 	if nsjailLogWriter != nil {
 		nsjailLogWriter.Close() // Parent no longer needs the write end
@@ -293,7 +313,7 @@ func runCommand(
 	<-done
 
 	runErr := cmd.Wait()
-	elapsedMS = time.Since(start).Milliseconds()
+	elapsedMS := time.Since(start).Milliseconds()
 
 	if outReadErr != nil {
 		slog.Error("stdout pipe read error", "error", outReadErr)
@@ -302,22 +322,31 @@ func runCommand(
 		slog.Error("stderr pipe read error", "error", errReadErr)
 	}
 
-	timedOut = ctx.Err() == context.DeadlineExceeded
-	
+	timedOut := ctx.Err() == context.DeadlineExceeded
+
+	var memoryExceeded bool
 	if runErr != nil {
-		if exitErr, ok := runErr.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(runErr, &exitErr) {
 			if exitErr.ExitCode() == 137 {
 				memoryExceeded = true
 			}
 		}
 	}
-	
+
 	logStr := nsjailLogBuf.String()
 	if strings.Contains(logStr, "signal: 9") || strings.Contains(logStr, "rlimit") {
 		memoryExceeded = true
 	}
-	
-	return outBuf.String(), errBuf.String(), elapsedMS, timedOut, runErr, memoryExceeded
+
+	return CommandResult{
+		Stdout:         outBuf.String(),
+		Stderr:         errBuf.String(),
+		ElapsedMS:      elapsedMS,
+		TimedOut:       timedOut,
+		Error:          runErr,
+		MemoryExceeded: memoryExceeded,
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -459,16 +488,16 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 			time.Duration(buildLimits.WallTimeS+2)*time.Second)
 		defer cancel()
 
-		outStr, errStr, elapsedMS, _, buildErr, _ := runCommand(ctx, jailDir, buildLimits,
+		res := runCommand(ctx, jailDir, buildLimits,
 			lang.Build.Cmd, buildArgs, nil, phaseBuild)
 
 		buildRes = BuildResult{
-			Stdout:     outStr,
-			Stderr:     errStr,
-			DurationMS: elapsedMS,
+			Stdout:     res.Stdout,
+			Stderr:     res.Stderr,
+			DurationMS: res.ElapsedMS,
 		}
 
-		if buildErr != nil {
+		if res.Error != nil {
 			buildRes.Status = "failed"
 			notExec := make([]TestResult, len(req.Tests))
 			for i := range notExec {
@@ -548,20 +577,20 @@ func runTestCase(
 	defer cancel()
 
 	stdinReader := strings.NewReader(tc.Stdin)
-	outStr, errStr, elapsedMS, timedOut, runErr, memoryExceeded := runCommand(
+	res := runCommand(
 		ctx, jailDir, runLimits, runCmd, runArgs, stdinReader, phaseRun)
 
 	var testStatus string
 	switch {
-	case timedOut:
+	case res.TimedOut:
 		testStatus = status.StatusTimeExceeded
-	case memoryExceeded:
+	case res.MemoryExceeded:
 		testStatus = status.StatusMemoryExceeded
-	case runErr != nil:
+	case res.Error != nil:
 		testStatus = status.StatusRuntimeError
-	case strings.TrimRight(outStr, "\r\n") == strings.TrimRight(tc.ExpectedStdout, "\r\n"):
+	case strings.TrimRight(res.Stdout, "\r\n") == strings.TrimRight(tc.ExpectedStdout, "\r\n"):
 		testStatus = status.StatusAccepted
-	case strings.TrimSpace(outStr) == strings.TrimSpace(tc.ExpectedStdout):
+	case strings.TrimSpace(res.Stdout) == strings.TrimSpace(tc.ExpectedStdout):
 		testStatus = status.StatusOutputWhitespaceMismatch
 	default:
 		testStatus = status.StatusWrongOutput
@@ -569,8 +598,8 @@ func runTestCase(
 
 	return TestResult{
 		Status:     testStatus,
-		Stdout:     outStr,
-		Stderr:     errStr,
-		DurationMS: elapsedMS,
+		Stdout:     res.Stdout,
+		Stderr:     res.Stderr,
+		DurationMS: res.ElapsedMS,
 	}
 }

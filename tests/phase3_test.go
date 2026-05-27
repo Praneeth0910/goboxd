@@ -518,7 +518,7 @@ func TestPhase3_Security_ValidFilenames(t *testing.T) {
 		"file123.txt",
 		"A.py",
 		"test-case.cpp",
-		"something..",  // trailing dots are fine
+		"something..", // trailing dots are fine
 		"name.tar.gz",
 	}
 	for _, name := range valid {
@@ -1115,7 +1115,7 @@ func TestPhase3_Output_ExactMatch(t *testing.T) {
 func TestPhase3_Output_TrailingNewlineMismatch(t *testing.T) {
 	payload := runPayload{
 		Language: "py3",
-		Source:   `print("trail")`, // outputs "trail\n"
+		Source:   `print("trail")`,                                 // outputs "trail\n"
 		Tests:    []testCase{{Stdin: "", ExpectedStdout: "trail"}}, // no \n
 	}
 	code, body := post(t, "/run", payload)
@@ -1357,9 +1357,9 @@ elif n == 3:
     sys.exit(1)
 `,
 		Tests: []testCase{
-			{Stdin: "1\n", ExpectedStdout: "correct\n"},  // accepted
-			{Stdin: "2\n", ExpectedStdout: "correct\n"},  // wrong_output
-			{Stdin: "3\n", ExpectedStdout: "correct\n"},  // runtime_error
+			{Stdin: "1\n", ExpectedStdout: "correct\n"}, // accepted
+			{Stdin: "2\n", ExpectedStdout: "correct\n"}, // wrong_output
+			{Stdin: "3\n", ExpectedStdout: "correct\n"}, // runtime_error
 		},
 	}
 	code, body := post(t, "/run", payload)
