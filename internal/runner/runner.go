@@ -468,7 +468,7 @@ func runTestCase(
 		testStatus = status.StatusTimeExceeded
 	case runErr != nil:
 		testStatus = status.StatusRuntimeError
-	case outStr == tc.ExpectedStdout:
+	case strings.TrimRight(outStr, "\r\n") == strings.TrimRight(tc.ExpectedStdout, "\r\n"):
 		testStatus = status.StatusAccepted
 	case strings.TrimSpace(outStr) == strings.TrimSpace(tc.ExpectedStdout):
 		testStatus = status.StatusOutputWhitespaceMismatch

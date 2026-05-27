@@ -48,6 +48,85 @@ languages:
         memory_kb: 524288
         max_processes: 64
 
+  c:
+    id: c
+    name: C
+    source_filename: solution.c
+    artifact: solution
+    build:
+      cmd: /usr/bin/gcc
+      args:
+        - "{{flags}}"
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 3
+        memory_kb: 1048576
+        max_processes: 100
+      flag_allowlist:
+        - "-O0"
+        - "-O1"
+        - "-O2"
+        - "-O3"
+        - "-Wall"
+        - "-Wextra"
+        - "-std=*"
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 3
+        memory_kb: 524288
+        max_processes: 64
+
+  java:
+    id: java
+    name: Java
+    source_filename: Solution.java
+    artifact: Solution.class
+    build:
+      cmd: /usr/bin/javac
+      args:
+        - "{{source}}"
+      limits:
+        wall_time_s: 5
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: /usr/bin/java
+      args:
+        - "Solution"
+      limits:
+        wall_time_s: 5
+        memory_kb: 524288
+        max_processes: 100
+
+  node:
+    id: node
+    name: Node.js (javascript)
+    source_filename: solution.js
+    run:
+      cmd: /usr/bin/node
+      args:
+        - "{{source}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 102400
+        max_processes: 100
+
+  bash:
+    id: bash
+    name: Bash (sh)
+    source_filename: solution.sh
+    run:
+      cmd: /bin/bash
+      args:
+        - "{{source}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 102400
+        max_processes: 100
+
 max_source_bytes: 262144
 max_tests: 50
 max_concurrent: 0

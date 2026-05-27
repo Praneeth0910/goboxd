@@ -1,4 +1,13 @@
-# Stage 1: Build Go binary
+# Stage 1: Build nsjail
+FROM debian:trixie-slim AS nsjail-builder
+RUN apt-get update && apt-get install -y \
+    autoconf bison flex gcc g++ git libprotobuf-dev libnl-route-3-dev libtool make pkg-config protobuf-compiler
+WORKDIR /nsjail
+RUN git clone https://github.com/google/nsjail.git . && \
+    git checkout 3.4 && \
+    make -j$(nproc)
+
+# Stage 2: Build Go binary
 FROM golang:1.22-bookworm AS go-builder
 
 WORKDIR /src
@@ -15,7 +24,7 @@ RUN CGO_ENABLED=0 go build \
     -o /usr/local/bin/goboxd \
     ./cmd/goboxd
 
-# Stage 2: Runtime — trixie provides GLIBC 2.41 (nsjail requires >= 2.38)
+# Stage 3: Runtime — trixie provides GLIBC 2.41 (nsjail requires >= 2.38)
 FROM debian:trixie-slim
 
 # Install only runtime dependencies actually needed by languages.yaml:
@@ -24,11 +33,11 @@ FROM debian:trixie-slim
 #   - libnl-route-3-200, libprotobuf32t64: nsjail runtime deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash ca-certificates \
-    python3 g++ \
+    python3 g++ gcc nodejs default-jdk \
     libnl-route-3-200 libprotobuf32t64 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY nsjail /usr/sbin/nsjail
+COPY --from=nsjail-builder /nsjail/nsjail /usr/sbin/nsjail
 RUN chmod 0755 /usr/sbin/nsjail
 COPY --from=go-builder /usr/local/bin/goboxd /usr/local/bin/goboxd
 

@@ -37,6 +37,9 @@ func NewJailDir(baseDir string) (path string, cleanup func(), err error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to create temp jail dir: %w", err)
 	}
+	if err := os.Chmod(targetPath, 0777); err != nil {
+		return "", nil, fmt.Errorf("failed to chmod temp jail dir: %w", err)
+	}
 
 	cleanupFn := func() {
 		_ = os.RemoveAll(targetPath)
