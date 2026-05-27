@@ -1,37 +1,33 @@
 #!/bin/bash
 
 # Load test script for goboxd using hey
-# Usage: ./scripts/load-test.sh [target_url] [concurrent] [duration]
-
 set -euo pipefail
 
-TARGET="${1:-http://localhost:8080}"
-CONCURRENT="${2:-50}"
-DURATION="${3:-30s}"
+TARGET="${1:-http://localhost:8080/run}"
 
-echo "Starting load test..."
-echo "Target: $TARGET"
-echo "Concurrent: $CONCURRENT"
-echo "Duration: $DURATION"
+# Payload as defined in the spec
+PAYLOAD='{"language":"py3","source":"print(\"hi\")","tests":[{"stdin":"","expected_stdout":"hi\n"}]}'
 
-# Simple Go code to execute
-READ_PAYLOAD='{
-  "language": "go",
-  "code": "package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"hello world\") }",
-  "args": ""
-}'
-
-# Run load test with hey
-if command -v hey &> /dev/null; then
-    echo "Using 'hey' for load testing..."
-    hey -n 10000 -c "$CONCURRENT" -d "$READ_PAYLOAD" -m POST -H "Content-Type: application/json" "$TARGET/run"
-elif command -v ab &> /dev/null; then
-    echo "Using 'ab' (ApacheBench) for load testing..."
-    ab -n 10000 -c "$CONCURRENT" -p payload.json "$TARGET/run"
-else
-    echo "Please install 'hey' or 'ab' for load testing"
-    echo "For hey: go install github.com/rakyll/hey@latest"
-    exit 1
+if ! command -v hey &> /dev/null; then
+    echo "hey is not installed. Installing..."
+    export PATH=$PATH:$(go env GOPATH)/bin
+    go install github.com/rakyll/hey@latest
 fi
 
-echo "Load test completed!"
+export PATH=$PATH:$(go env GOPATH)/bin
+
+TEMP_FILE=$(mktemp /tmp/goboxd-bench-XXXXXX.txt)
+echo "Running benchmarks into $TEMP_FILE"
+
+echo "# Benchmark Results" > "$TEMP_FILE"
+echo "" >> "$TEMP_FILE"
+
+for CONCURRENCY in 1 10 50 100; do
+    echo "Running 200 requests with concurrency $CONCURRENCY..."
+    echo "## Concurrency: $CONCURRENCY" >> "$TEMP_FILE"
+    hey -n 200 -c "$CONCURRENCY" -m POST -H "Content-Type: application/json" -d "$PAYLOAD" "$TARGET" >> "$TEMP_FILE" 2>&1
+    echo "" >> "$TEMP_FILE"
+done
+
+echo "Benchmarks completed. Output written to $TEMP_FILE."
+cat "$TEMP_FILE"

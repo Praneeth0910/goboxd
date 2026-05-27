@@ -13,7 +13,7 @@ Accepts user-supplied filenames without strict validation, allowing `../../etc/p
 We validate all filenames to reject path separators, leading dots, and directory traversal patterns. Only safe, flat filenames are accepted.
 
 ### Location
-`internal/validate/filename.go:15`
+`internal/validate/filename.go:111`
 
 ---
 
@@ -43,7 +43,7 @@ Passes user-supplied compiler flags directly to the compiler, allowing injection
 Flags are validated against a strict allowlist (exact match or safe suffix glob). Only explicitly allowed flags are passed to the compiler.
 
 ### Location
-`internal/validate/flags.go:18`
+`internal/validate/flags.go:55`
 
 ---
 
@@ -88,7 +88,7 @@ Reads the full stdout/stderr of child processes into memory, so a runaway or mal
 We wrap all process output pipes with CapReader, which enforces a strict output cap and appends a truncation marker if the limit is exceeded.
 
 ### Location
-`internal/sandbox/limits.go:36`, `internal/runner/runner.go:251`
+`internal/sandbox/limits.go:36`, `internal/runner/runner.go:259`
 
 ---
 
