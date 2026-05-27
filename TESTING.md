@@ -87,7 +87,7 @@ Expected output:
       "status": "accepted",
       "stdout": "Hello, World!\n",
       "stderr": "",
-      "wall_time_ms": 45
+      "duration_ms": 45
     }
   ]
 }
@@ -119,14 +119,14 @@ Expected output:
     "status": "ok",
     "stdout": "",
     "stderr": "",
-    "wall_time_ms": 125
+    "duration_ms": 125
   },
   "tests": [
     {
       "status": "accepted",
       "stdout": "Hello, World!\n",
       "stderr": "",
-      "wall_time_ms": 18
+      "duration_ms": 18
     }
   ]
 }

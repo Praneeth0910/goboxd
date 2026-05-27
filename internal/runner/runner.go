@@ -296,6 +296,7 @@ func runCommand(
 
 func expandArgs(args []string, sourcePath, artifactPath string, flags []string) []string {
 	out := make([]string, 0, len(args)+len(flags))
+	class := strings.TrimSuffix(filepath.Base(artifactPath), filepath.Ext(artifactPath))
 	for _, arg := range args {
 		switch arg {
 		case config.TemplateFlags:
@@ -304,9 +305,12 @@ func expandArgs(args []string, sourcePath, artifactPath string, flags []string) 
 			out = append(out, sourcePath)
 		case config.TemplateArtifact:
 			out = append(out, artifactPath)
+		case config.TemplateClass:
+			out = append(out, class)
 		default:
 			arg = strings.ReplaceAll(arg, config.TemplateSource, sourcePath)
 			arg = strings.ReplaceAll(arg, config.TemplateArtifact, artifactPath)
+			arg = strings.ReplaceAll(arg, config.TemplateClass, class)
 			out = append(out, arg)
 		}
 	}
@@ -392,6 +396,13 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 
 	if lang.Build != nil {
 		artifactFilename := lang.ArtifactFilename
+		if lang.ArtifactFilenameStrategy == "from_request" {
+			if req.ArtifactFilename != "" {
+				artifactFilename = req.ArtifactFilename
+			} else if sourceFilename != "" {
+				artifactFilename = strings.TrimSuffix(sourceFilename, filepath.Ext(sourceFilename)) + filepath.Ext(lang.ArtifactFilename)
+			}
+		}
 		if artifactFilename == "" {
 			artifactFilename = "solution"
 		}
@@ -468,6 +479,13 @@ func runTestCase(
 	tc TestCase,
 ) TestResult {
 	artifactFilename := lang.ArtifactFilename
+	if lang.ArtifactFilenameStrategy == "from_request" {
+		if req.ArtifactFilename != "" {
+			artifactFilename = req.ArtifactFilename
+		} else if sourceFilename != "" {
+			artifactFilename = strings.TrimSuffix(sourceFilename, filepath.Ext(sourceFilename)) + filepath.Ext(lang.ArtifactFilename)
+		}
+	}
 	if artifactFilename == "" {
 		artifactFilename = "solution"
 	}
@@ -479,11 +497,12 @@ func runTestCase(
 
 	runArgs := expandArgs(lang.Run.Args, jailSourcePath, jailArtifactPath, nil)
 
-	// Expand {{artifact}} and {{source}} in the run command itself.
-	// "./{{artifact}}" → "./solution" stays correct (relative path in chroot).
+	// Expand {{artifact}}, {{source}}, {{class}} in the run command itself.
 	runCmd := lang.Run.Cmd
+	class := strings.TrimSuffix(artifactFilename, filepath.Ext(artifactFilename))
 	runCmd = strings.ReplaceAll(runCmd, config.TemplateArtifact, artifactFilename)
 	runCmd = strings.ReplaceAll(runCmd, config.TemplateSource, sourceFilename)
+	runCmd = strings.ReplaceAll(runCmd, config.TemplateClass, class)
 
 	runLimits := lang.Run.Limits
 	if runLimits.WallTimeS <= 0 {

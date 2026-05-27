@@ -181,14 +181,14 @@ All execution results (including failures) return 200. User code errors never ca
     "status": "ok",
     "stdout": "",
     "stderr": "",
-    "wall_time_ms": 125
+    "duration_ms": 125
   },
   "tests": [
     {
       "status": "accepted",
       "stdout": "10\n",
       "stderr": "",
-      "wall_time_ms": 18
+      "duration_ms": 18
     }
   ]
 }

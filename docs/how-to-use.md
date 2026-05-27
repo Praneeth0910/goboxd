@@ -126,14 +126,14 @@ You will receive a response like this:
       "status": "accepted",
       "stdout": "Radius: 5, Area: 78.54\n",
       "stderr": "",
-      "wall_time_ms": 52
+      "duration_ms": 52
     }
   ]
 }
 ```
 
 - **`status: "accepted"`** means the program executed successfully and the output matched your `expected_stdout`.
-- **`wall_time_ms`** shows exactly how fast the execution ran (only 52 milliseconds!).
+- **`duration_ms`** shows exactly how fast the execution ran (only 52 milliseconds!).
 
 ---
 
@@ -179,14 +179,14 @@ In the response, you will notice an extra `build` field:
     "status": "ok",
     "stdout": "",
     "stderr": "",
-    "wall_time_ms": 231
+    "duration_ms": 231
   },
   "tests": [
     {
       "status": "accepted",
       "stdout": "Hello from C++!\n",
       "stderr": "",
-      "wall_time_ms": 12
+      "duration_ms": 12
     }
   ]
 }

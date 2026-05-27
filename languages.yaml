@@ -83,7 +83,9 @@ languages:
     id: java
     name: Java
     source_filename: Solution.java
+    source_filename_strategy: from_request
     artifact: Solution.class
+    artifact_filename_strategy: from_request
     build:
       cmd: /usr/bin/javac
       args:
@@ -95,7 +97,7 @@ languages:
     run:
       cmd: /usr/bin/java
       args:
-        - "Solution"
+        - "{{class}}"
       limits:
         wall_time_s: 5
         memory_kb: 524288

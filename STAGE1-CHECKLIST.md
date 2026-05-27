@@ -21,7 +21,7 @@ Use this checklist before opening the PR. Each item must pass before submission.
 - [x] `POST /run` with C++ hello-world returns `{"status":"accepted",...}`
 - [x] Response includes `build` field for compiled languages
 - [x] Response includes `tests` array with all test results
-- [x] Duration fields (`wall_time_ms`) are populated
+- [x] Duration fields (`duration_ms`) are populated
 
 ### Security & Validation Tests
 - [x] `POST /run` with `source_filename: "../../etc/passwd"` returns HTTP 400

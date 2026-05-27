@@ -347,9 +347,9 @@ int main() {
 	if build["status"] != "ok" {
 		t.Errorf("build.status: got %q, want 'ok'", build["status"])
 	}
-	// wall_time_ms must be a positive number
-	if wt, ok := build["wall_time_ms"].(float64); !ok || wt < 0 {
-		t.Errorf("build.wall_time_ms: got %v, want positive number", build["wall_time_ms"])
+	// duration_ms must be a positive number
+	if wt, ok := build["duration_ms"].(float64); !ok || wt < 0 {
+		t.Errorf("build.duration_ms: got %v, want positive number", build["duration_ms"])
 	}
 }
 
@@ -786,7 +786,7 @@ func TestPhase3_JSON_DuplicateKeys(t *testing.T) {
 // GROUP 11: RESPONSE STRUCTURE CONTRACTS
 // ===========================================================================
 
-// TestPhase3_Response_TestFields — every test result has status, stdout, stderr, wall_time_ms
+// TestPhase3_Response_TestFields — every test result has status, stdout, stderr, duration_ms
 func TestPhase3_Response_TestFields(t *testing.T) {
 	payload := runPayload{
 		Language: "py3",
@@ -799,16 +799,16 @@ func TestPhase3_Response_TestFields(t *testing.T) {
 
 	tests := assertTestsArray(t, m, 1)
 	tr := tests[0]
-	for _, field := range []string{"status", "stdout", "stderr", "wall_time_ms"} {
+	for _, field := range []string{"status", "stdout", "stderr", "duration_ms"} {
 		assertFieldPresent(t, tr, field)
 	}
-	// wall_time_ms must be >= 0
-	if wt, ok := tr["wall_time_ms"].(float64); !ok || wt < 0 {
-		t.Errorf("wall_time_ms: got %v, want >= 0", tr["wall_time_ms"])
+	// duration_ms must be >= 0
+	if wt, ok := tr["duration_ms"].(float64); !ok || wt < 0 {
+		t.Errorf("duration_ms: got %v, want >= 0", tr["duration_ms"])
 	}
 }
 
-// TestPhase3_Response_CppBuildFields — build result has status, stdout, stderr, wall_time_ms
+// TestPhase3_Response_CppBuildFields — build result has status, stdout, stderr, duration_ms
 func TestPhase3_Response_CppBuildFields(t *testing.T) {
 	payload := runPayload{
 		Language: "cpp",
@@ -824,7 +824,7 @@ int main() { std::cout << "ok\n"; }`,
 	if build == nil {
 		t.Fatal("build result missing")
 	}
-	for _, field := range []string{"status", "stdout", "stderr", "wall_time_ms"} {
+	for _, field := range []string{"status", "stdout", "stderr", "duration_ms"} {
 		assertFieldPresent(t, build, field)
 	}
 }
@@ -1313,7 +1313,7 @@ while True:
 // GROUP 19: WALL TIME TRACKING
 // ===========================================================================
 
-// TestPhase3_WallTime_PositiveValue — wall_time_ms is always a non-negative number
+// TestPhase3_WallTime_PositiveValue — duration_ms is always a non-negative number
 func TestPhase3_WallTime_PositiveValue(t *testing.T) {
 	payload := runPayload{
 		Language: "py3",
@@ -1329,12 +1329,12 @@ print("done")
 	m := parseJSON(t, body)
 
 	tests := assertTestsArray(t, m, 1)
-	wt, ok := tests[0]["wall_time_ms"].(float64)
+	wt, ok := tests[0]["duration_ms"].(float64)
 	if !ok {
-		t.Fatal("wall_time_ms is not a number")
+		t.Fatal("duration_ms is not a number")
 	}
 	if wt < 50 { // should be at least ~100ms due to sleep
-		t.Errorf("wall_time_ms: got %v, expected at least ~100 for a 100ms sleep", wt)
+		t.Errorf("duration_ms: got %v, expected at least ~100 for a 100ms sleep", wt)
 	}
 }
 

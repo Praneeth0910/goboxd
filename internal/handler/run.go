@@ -66,7 +66,7 @@ type BuildResult struct {
 	Status     string `json:"status"`
 	Stdout     string `json:"stdout"`
 	Stderr     string `json:"stderr"`
-	WallTimeMs int64  `json:"wall_time_ms"`
+	DurationMs int64  `json:"duration_ms"`
 }
 
 // TestCaseResult holds the outcome of running one test case.
@@ -74,7 +74,7 @@ type TestCaseResult struct {
 	Status     string `json:"status"`
 	Stdout     string `json:"stdout"`
 	Stderr     string `json:"stderr"`
-	WallTimeMs int64  `json:"wall_time_ms"`
+	DurationMs int64  `json:"duration_ms"`
 }
 
 // errorResponse is the JSON shape for 400 errors.
@@ -283,7 +283,7 @@ func toHTTPResponse(r runner.RunResult) RunResponse {
 			Status:     r.Build.Status,
 			Stdout:     r.Build.Stdout,
 			Stderr:     r.Build.Stderr,
-			WallTimeMs: r.Build.DurationMS,
+			DurationMs: r.Build.DurationMS,
 		}
 	}
 
@@ -292,7 +292,7 @@ func toHTTPResponse(r runner.RunResult) RunResponse {
 			Status:     tr.Status,
 			Stdout:     tr.Stdout,
 			Stderr:     tr.Stderr,
-			WallTimeMs: tr.DurationMS,
+			DurationMs: tr.DurationMS,
 		}
 	}
 

@@ -12,6 +12,7 @@ import (
 const (
 	TemplateSource   = "{{source}}"
 	TemplateArtifact = "{{artifact}}"
+	TemplateClass    = "{{class}}"
 	TemplateFlags    = "{{flags}}"
 )
 
