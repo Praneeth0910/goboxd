@@ -130,3 +130,4 @@ languages:
 max_source_bytes: 262144
 max_tests: 50
 max_concurrent: 0
+queue_timeout_s: 30

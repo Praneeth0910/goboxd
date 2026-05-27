@@ -55,6 +55,7 @@ type Config struct {
 	MaxSourceBytes int                 `yaml:"max_source_bytes"`
 	MaxTests       int                 `yaml:"max_tests"`
 	MaxConcurrent  int                 `yaml:"max_concurrent"`
+	QueueTimeoutS  int                 `yaml:"queue_timeout_s"`
 }
 
 // Load reads and parses a YAML configuration file
@@ -76,6 +77,7 @@ func Load(path string) (*Config, error) {
 		MaxSourceBytes: 262144, // 256 KiB
 		MaxTests:       50,
 		MaxConcurrent:  0, // use runtime.NumCPU()
+		QueueTimeoutS:  30, // 30 seconds default
 	}
 
 	// Parse languages separately to build map keyed by id
@@ -106,10 +108,17 @@ func Load(path string) (*Config, error) {
 	if maxConcurrent, ok := rawConfig["max_concurrent"].(int); ok {
 		cfg.MaxConcurrent = maxConcurrent
 	}
+	if queueTimeoutS, ok := rawConfig["queue_timeout_s"].(int); ok {
+		cfg.QueueTimeoutS = queueTimeoutS
+	}
 
 	// Set MaxConcurrent to NumCPU if not specified or 0
 	if cfg.MaxConcurrent <= 0 {
 		cfg.MaxConcurrent = runtime.NumCPU()
+	}
+
+	if cfg.QueueTimeoutS <= 0 {
+		cfg.QueueTimeoutS = 30
 	}
 
 	// Validate before returning

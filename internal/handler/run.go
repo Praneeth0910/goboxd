@@ -179,21 +179,19 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 8. Acquire concurrency slot (blocking queue behavior)
-	// Why this is correct and safe:
-	// - Channel Blocking (Queueing): Writing to a buffered channel `sem <- struct{}{}`
-	//   blocks the sending goroutine if the channel is full. Since Go's net/http server
-	//   executes every incoming request in its own goroutine, blocking here puts the request
-	//   in a natural waiting queue, matching the requirement that requests queue and do not fail.
-	// - Immediate Defer: The 'defer' statement must be registered *immediately* after
-	//   successful acquisition. This guarantees that no matter how the rest of the
-	//   function returns (e.g., normal response, runner failure, internal server errors, or panics),
-	//   the slot is released by reading from the channel `<-h.sem`.
-	// - No Goroutine Leaks: Because the release is guaranteed via the deferred read on any
-	//   exit path, request goroutines are guaranteed to eventually exit and free their slots.
-	//   They are not leaked or left hanging indefinitely.
-	h.sem <- struct{}{}
-	defer func() { <-h.sem }()
+	// 8. Acquire concurrency slot (queue behavior with timeout)
+	// We use a select with time.After to prevent infinite blocking.
+	select {
+	case h.sem <- struct{}{}:
+		defer func() { <-h.sem }()
+	case <-time.After(time.Duration(h.cfg.QueueTimeoutS) * time.Second):
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		json.NewEncoder(w).Encode(map[string]any{
+			"error": errorResponse{Code: "queue_full", Message: fmt.Sprintf("server is busy, retry after %d seconds", h.cfg.QueueTimeoutS)},
+		})
+		return
+	}
 
 	// Track stats
 	atomic.AddInt64(&h.st.InFlightJobs, 1)

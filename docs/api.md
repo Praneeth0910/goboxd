@@ -234,6 +234,7 @@ Validation errors return HTTP 400 with an error object:
 | `invalid_filename` | 400  | Path traversal, hidden file, or separators   |
 | `disallowed_flag`  | 400  | Compiler flag not in allowlist               |
 | `invalid_test_count` | 400 | 0 tests or more than 50 tests               |
+| `queue_full`       | 429  | Server is too busy, all concurrency slots full |
 | `internal_error`   | 500  | Server-side error during execution           |
 
 Oversized request bodies (exceeding `max_source_bytes`) are rejected by `http.MaxBytesReader` before decoding.
