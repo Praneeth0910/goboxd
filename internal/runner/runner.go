@@ -279,8 +279,12 @@ func runCommand(
 	runErr := cmd.Wait()
 	elapsedMS = time.Since(start).Milliseconds()
 
-	_ = outReadErr
-	_ = errReadErr
+	if outReadErr != nil {
+		slog.Error("stdout pipe read error", "error", outReadErr)
+	}
+	if errReadErr != nil {
+		slog.Error("stderr pipe read error", "error", errReadErr)
+	}
 
 	timedOut = ctx.Err() == context.DeadlineExceeded
 	return outBuf.String(), errBuf.String(), elapsedMS, timedOut, runErr

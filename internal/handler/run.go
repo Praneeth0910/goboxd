@@ -220,7 +220,7 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Store job status in request context for middleware logging
-	_ = middleware.SetJobStatus(r, result.Status)
+	r = middleware.SetJobStatus(r, result.Status)
 
 	// 10. Respond 200 with result (never 5xx for user-code failure)
 	w.Header().Set("Content-Type", "application/json")
