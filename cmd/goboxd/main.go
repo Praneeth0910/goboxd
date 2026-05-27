@@ -81,7 +81,8 @@ func main() {
 	slog.Info("running startup probes")
 	nsjailProbe := runner.ProbeNsjail()
 	langProbes := make(map[string]runner.ProbeResult)
-	for langID, langCfg := range cfg.Languages {
+	for langID := range cfg.Languages {
+		langCfg := cfg.Languages[langID]
 		langProbes[langID] = runner.ProbeLanguage(langCfg)
 	}
 	healthHandler := handler.NewHealthHandler(version, commit, nsjailProbe, langProbes, cfg, st)
@@ -97,7 +98,9 @@ func main() {
 	})
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			slog.Error("failed to encode healthz response", "error", err)
+		}
 	})
 	r.Get("/readyz", healthHandler.Readyz)
 	r.Get("/info", healthHandler.Info)
@@ -105,7 +108,7 @@ func main() {
 
 	// Start server
 	addr := fmt.Sprintf(":%d", *port)
-	
+
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: r,

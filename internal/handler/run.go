@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -106,9 +107,11 @@ func NewRunHandler(cfg *config.Config, st *stats.Stats, sem chan struct{}) *RunH
 func writeError(w http.ResponseWriter, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
-	json.NewEncoder(w).Encode(map[string]any{
+	if err := json.NewEncoder(w).Encode(map[string]any{
 		"error": errorResponse{Code: code, Message: message},
-	})
+	}); err != nil {
+		slog.Error("failed to encode error response", "error", err)
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -187,9 +190,11 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 	case <-time.After(time.Duration(h.cfg.QueueTimeoutS) * time.Second):
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusTooManyRequests)
-		json.NewEncoder(w).Encode(map[string]any{
+		if err := json.NewEncoder(w).Encode(map[string]any{
 			"error": errorResponse{Code: "queue_full", Message: fmt.Sprintf("server is busy, retry after %d seconds", h.cfg.QueueTimeoutS)},
-		})
+		}); err != nil {
+			slog.Error("failed to encode queue_full response", "error", err)
+		}
 		return
 	}
 
@@ -206,19 +211,23 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		h.st.SetLastError(time.Now())
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{
+		if err := json.NewEncoder(w).Encode(map[string]any{
 			"error": errorResponse{Code: "internal_error", Message: err.Error()},
-		})
+		}); err != nil {
+			slog.Error("failed to encode internal_error response", "error", err)
+		}
 		return
 	}
 
 	// Store job status in request context for middleware logging
-	r = middleware.SetJobStatus(r, result.Status)
+	_ = middleware.SetJobStatus(r, result.Status)
 
 	// 10. Respond 200 with result (never 5xx for user-code failure)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(toHTTPResponse(result))
+	if err := json.NewEncoder(w).Encode(toHTTPResponse(result)); err != nil {
+		slog.Error("failed to encode run response", "error", err)
+	}
 }
 
 // ---------------------------------------------------------------------------

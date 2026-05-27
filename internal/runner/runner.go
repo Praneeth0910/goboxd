@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,7 +29,9 @@ var jobCounter atomic.Int64
 func GenerateJobID() string {
 	count := jobCounter.Add(1)
 	b := make([]byte, 4)
-	_, _ = rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		slog.Error("failed to generate random bytes for job ID", "error", err)
+	}
 	return fmt.Sprintf("%d-%s-%d", count, hex.EncodeToString(b), os.Getpid())
 }
 
@@ -208,7 +211,7 @@ func runCommand(
 	cmdArgs []string,
 	stdin io.Reader,
 	phase runPhase,
-) (stdout string, stderr string, elapsedMS int64, timedOut bool, err error) {
+) (stdout, stderr string, elapsedMS int64, timedOut bool, err error) {
 	var cmd *exec.Cmd
 
 	if nsjailAvailable() {
@@ -221,8 +224,10 @@ func runCommand(
 		}
 		cmd = exec.CommandContext(ctx, nsjailPath(), njArgs...)
 		// Discard fd 3 (nsjail log) by pointing it at /dev/null
-		devNull, _ := os.Open(os.DevNull)
-		if devNull != nil {
+		devNull, err := os.Open(os.DevNull)
+		if err != nil {
+			slog.Error("failed to open /dev/null for nsjail log discard", "error", err)
+		} else {
 			cmd.ExtraFiles = []*os.File{devNull} // becomes fd 3
 			defer devNull.Close()
 		}
@@ -240,7 +245,7 @@ func runCommand(
 	outPipe, outErr := cmd.StdoutPipe()
 	errPipe, errErr := cmd.StderrPipe()
 	if outErr != nil || errErr != nil {
-		return "", "", 0, false, fmt.Errorf("failed to create output pipes: %v %v", outErr, errErr)
+		return "", "", 0, false, fmt.Errorf("failed to create output pipes: stdout_err=%w stderr_err=%w", outErr, errErr)
 	}
 
 	start := time.Now()
@@ -355,19 +360,26 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 	}
 	sourcePath := filepath.Join(jailDir, sourceFilename)
 	// Safely open the file to prevent TOCTOU symlink attacks
-	f, err := os.OpenFile(sourcePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0644)
+	f, err := os.OpenFile(sourcePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0o644)
 	if err != nil {
 		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("failed to safely open source file: %w", err)
 	}
-	if _, err := f.Write([]byte(req.Source)); err != nil {
-		f.Close()
+	if _, err := f.WriteString(req.Source); err != nil {
+		if closeErr := f.Close(); closeErr != nil {
+			slog.Error("failed to close source file after write error", "error", closeErr)
+		}
 		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("failed to write source: %w", err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("failed to close source file: %w", err)
+	}
 
 	// Verify the written path is a regular file
 	info, err := os.Lstat(sourcePath)
-	if err != nil || !info.Mode().IsRegular() {
+	if err != nil {
+		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("failed to lstat source file: %w", err)
+	}
+	if !info.Mode().IsRegular() {
 		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("source file is not a regular file")
 	}
 
