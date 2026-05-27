@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"os"
 	"sync/atomic"
 )
@@ -42,7 +43,9 @@ func NewJailDir(baseDir string) (path string, cleanup func(), err error) {
 	}
 
 	cleanupFn := func() {
-		_ = os.RemoveAll(targetPath)
+		if err := os.RemoveAll(targetPath); err != nil {
+			slog.Error("failed to remove jail dir", "path", targetPath, "error", err)
+		}
 	}
 
 	return targetPath, cleanupFn, nil

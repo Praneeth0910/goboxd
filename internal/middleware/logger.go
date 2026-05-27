@@ -62,7 +62,10 @@ func (sr *statusRecorder) WriteHeader(status int) {
 // generateRequestID creates a unique request ID as hex-encoded random bytes.
 func generateRequestID() string {
 	b := make([]byte, 16) // 128 bits
-	_, _ = rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		slog.Error("failed to generate request ID", "error", err)
+		return "unknown"
+	}
 	return hex.EncodeToString(b)
 }
 
