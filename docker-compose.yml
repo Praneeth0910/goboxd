@@ -1,5 +1,6 @@
 services:
   goboxd:
+    image: goboxd:latest
     build:
       context: .
       dockerfile: Dockerfile

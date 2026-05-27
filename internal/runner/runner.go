@@ -247,6 +247,14 @@ func runCommand(
 		return "", "", 0, false, startErr
 	}
 
+	// Forcibly close pipes when context expires. This prevents io.Copy from hanging
+	// forever if the process is killed but orphaned child processes hold the pipes open.
+	go func() {
+		<-ctx.Done()
+		outPipe.Close()
+		errPipe.Close()
+	}()
+
 	// Read capped stdout and stderr concurrently
 	capOut := sandbox.CapReader(outPipe, sandbox.DefaultMaxOutputBytes)
 	capErr := sandbox.CapReader(errPipe, sandbox.DefaultMaxOutputBytes)
