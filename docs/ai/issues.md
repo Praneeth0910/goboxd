@@ -187,3 +187,17 @@ The readiness probe (`/readyz`) reported `"status": "ok"` because we had previou
 
 **What we learned:**
 Always verify that the base image's glibc version matches the requirements of pre-built binaries. `debian:bookworm-slim` (Debian 12) ships GLIBC 2.36 and `debian:trixie-slim` (Debian 13) ships GLIBC 2.41. A readiness probe that only checks file existence can give a false positive — consider running a trivial execution test during startup. Also, audit Dockerfile dependencies against `languages.yaml` to avoid installing packages for languages that aren't actually configured.
+
+## May 27, 2026 - Fork Bomb tests hanging indefinitely (10+ minutes) due to pipe leak
+
+**What we were trying to do:**
+Run the phase-3 integration test suite, specifically `TestPhase3_Never5xx_ForkBomb`, which uses `os.fork()` inside a loop to ensure the sandbox safely bounds process limits without crashing the server.
+
+**What went wrong:**
+The test was hanging indefinitely and eventually timing out after 10 minutes. A classic Go `exec.Command` pipe leak race condition was occurring. When the time limit expired, `context.WithTimeout` inside the Go runner forcibly killed the parent `nsjail` process via `SIGKILL`. Because `nsjail` was killed instantly, it didn't get a chance to gracefully terminate the inner fork bomb child processes. These orphaned child processes stayed alive in the background and held the `stdout` and `stderr` pipes open. Consequently, Go's `cmd.Wait()` blocked forever waiting for the pipes to receive an EOF.
+
+**How we resolved it:**
+Added a 2-second buffer to the Go `context.WithTimeout` duration (`time.Duration(runLimits.WallTimeS+2)*time.Second`). This allows `nsjail`'s internal `--time_limit` to expire first, giving `nsjail` the time it needs to properly sweep and terminate the child processes, close the pipes, and exit cleanly before the Go context resorts to a forceful `SIGKILL`.
+
+**What we learned:**
+When wrapping container runtimes or sandboxes (like `nsjail` or `docker`) with a timeout, always give the wrapper process a slightly longer timeout buffer than the inner sandbox. This ensures the sandbox has a chance to cleanly shut down its own PID namespace, preventing orphaned processes from leaking file descriptors or hanging I/O readers.

@@ -375,8 +375,9 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 			buildLimits.WallTimeS = req.Build.Limits.WallTimeS
 		}
 
+		// Add 2s buffer so nsjail's internal --time_limit fires first and cleans up gracefully
 		ctx, cancel := context.WithTimeout(context.Background(),
-			time.Duration(buildLimits.WallTimeS)*time.Second)
+			time.Duration(buildLimits.WallTimeS+2)*time.Second)
 		defer cancel()
 
 		outStr, errStr, elapsedMS, _, buildErr := runCommand(ctx, jailDir, buildLimits,
@@ -454,8 +455,9 @@ func runTestCase(
 		runLimits.WallTimeS = req.Run.Limits.WallTimeS
 	}
 
+	// Add 2s buffer so nsjail's internal --time_limit fires first and cleans up gracefully
 	ctx, cancel := context.WithTimeout(context.Background(),
-		time.Duration(runLimits.WallTimeS)*time.Second)
+		time.Duration(runLimits.WallTimeS+2)*time.Second)
 	defer cancel()
 
 	stdinReader := strings.NewReader(tc.Stdin)
