@@ -98,6 +98,8 @@ C++ at high concurrency exposes the compile-step cost, not a server correctness 
 the server never crashed, never rejected with 5xx, and never dropped a request into the
 void.
 
+**Mitigation Tuning Tip**: For workloads heavily skewed toward compiled languages (like C++ or Java), the default `runtime.NumCPU()` might over-commit the CPU and lead to slow compilation queues. We recommend tuning `GOBOXD_MAX_CONCURRENT=2` (or roughly `NumCPU / 2`) in these environments. This limits in-flight compilations, ensuring they finish faster and reducing overall tail latency.
+
 ---
 
 ## How to re-run

@@ -79,7 +79,7 @@ goboxd/
 - Distributed execution
 - Job history persistence
 - Request rate limiting
-**Correction**: AI returned a list-format YAML; I restructured it to a map keyed by language ID 
+**Judgment Call**: AI returned a list-format YAML; I restructured it to a map keyed by language ID 
 to match config.go's map[string]Language. Also switched from net/http to chi after evaluating 
 routing needs (see adrs.md).
 ## 26-05-26 - Add languages.yaml with python3 and cpp

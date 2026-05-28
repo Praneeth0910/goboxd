@@ -74,6 +74,7 @@ func (h *HealthHandler) startBackgroundProbes() {
 		}
 
 		h.mu.Lock()
+		h.nsjailProbe = runner.ProbeNsjail()
 		h.langProbes = newProbes
 		h.mu.Unlock()
 	}

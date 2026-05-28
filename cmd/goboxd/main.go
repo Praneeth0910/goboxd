@@ -48,6 +48,7 @@ func main() {
 
 	// Clean up stale jail directories from the temp directory (using 10 minutes as maxAge)
 	slog.Info("sweeping orphaned sandbox directories in background")
+	runner.SweepOrphanedDirectories(os.TempDir(), 10*time.Minute)
 	go func() {
 		for range time.Tick(10 * time.Minute) {
 			runner.SweepOrphanedDirectories(os.TempDir(), 10*time.Minute)

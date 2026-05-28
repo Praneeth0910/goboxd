@@ -39,6 +39,7 @@ type BuildOptions struct {
 // RunOptions are optional per-request overrides for the run phase.
 type RunOptions struct {
 	Limits *LimitsInput `json:"limits,omitempty"`
+	Flags  []string     `json:"flags,omitempty"`
 }
 
 // LimitsInput holds per-request resource-limit overrides.
@@ -71,10 +72,11 @@ type BuildResult struct {
 
 // TestCaseResult holds the outcome of running one test case.
 type TestCaseResult struct {
-	Status     string `json:"status"`
-	Stdout     string `json:"stdout"`
-	Stderr     string `json:"stderr"`
-	DurationMs int64  `json:"duration_ms"`
+	Status       string `json:"status"`
+	Stdout       string `json:"stdout"`
+	Stderr       string `json:"stderr"`
+	DurationMs   int64  `json:"duration_ms"`
+	MemoryPeakKB int64  `json:"memory_peak_kb"`
 }
 
 // errorResponse is the JSON shape for 400 errors.
@@ -257,13 +259,14 @@ func toRunnerRequest(req RunRequest) runner.RunRequest {
 		rr.Build = pc
 	}
 
-	if req.Run != nil && req.Run.Limits != nil {
-		rr.Run = runner.PhaseConfig{
-			Limits: config.ResourceLimits{
+	if req.Run != nil {
+		rr.Run = runner.PhaseConfig{Flags: req.Run.Flags}
+		if req.Run.Limits != nil {
+			rr.Run.Limits = config.ResourceLimits{
 				WallTimeS:    req.Run.Limits.WallTimeS,
 				MemoryKB:     req.Run.Limits.MemoryKB,
 				MaxProcesses: req.Run.Limits.MaxProcesses,
-			},
+			}
 		}
 	}
 
@@ -289,10 +292,11 @@ func toHTTPResponse(r runner.RunResult) RunResponse {
 
 	for i, tr := range r.Tests {
 		resp.Tests[i] = TestCaseResult{
-			Status:     tr.Status,
-			Stdout:     tr.Stdout,
-			Stderr:     tr.Stderr,
-			DurationMs: tr.DurationMS,
+			Status:       tr.Status,
+			Stdout:       tr.Stdout,
+			Stderr:       tr.Stderr,
+			DurationMs:   tr.DurationMS,
+			MemoryPeakKB: tr.MemoryPeakKB,
 		}
 	}
 

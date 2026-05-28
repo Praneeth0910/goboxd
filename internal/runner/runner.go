@@ -385,25 +385,7 @@ func expandArgs(args []string, sourcePath, artifactPath string, flags []string) 
 	return out
 }
 
-// statusPrecedence maps each result status to a severity level (higher = worse).
-var statusPrecedence = map[string]int{
-	status.StatusAccepted:                 0,
-	status.StatusOutputWhitespaceMismatch: 1,
-	status.StatusWrongOutput:              2,
-	status.StatusTimeExceeded:             3,
-	status.StatusMemoryExceeded:           4,
-	status.StatusRuntimeError:             5,
-	status.StatusBuildFailed:              6,
-	status.StatusInternalError:            7,
-}
 
-// worstStatus returns whichever of a, b has the higher precedence.
-func worstStatus(a, b string) string {
-	if statusPrecedence[b] > statusPrecedence[a] {
-		return b
-	}
-	return a
-}
 
 // ---------------------------------------------------------------------------
 // RunSandbox — full lifecycle for one POST /run request
@@ -528,7 +510,9 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 	for _, tc := range req.Tests {
 		tr := runTestCase(lang, jailDir, sourceFilename, req, tc)
 		testResults = append(testResults, tr)
-		overallStatus = worstStatus(overallStatus, tr.Status)
+		if overallStatus == status.StatusAccepted && tr.Status != status.StatusAccepted {
+			overallStatus = tr.Status
+		}
 	}
 
 	return RunResult{
@@ -563,7 +547,7 @@ func runTestCase(
 	jailSourcePath := "/" + sourceFilename
 	jailArtifactPath := "/" + artifactFilename
 
-	runArgs := expandArgs(lang.Run.Args, jailSourcePath, jailArtifactPath, nil)
+	runArgs := expandArgs(lang.Run.Args, jailSourcePath, jailArtifactPath, req.Run.Flags)
 
 	// Expand {{artifact}}, {{source}}, {{class}} in the run command itself.
 	runCmd := lang.Run.Cmd

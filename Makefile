@@ -56,13 +56,20 @@ integration: build
 		curlimages/curl:latest \
 		curl -f http://localhost:18080/healthz > /dev/null 2>&1; then \
 		echo "$(GREEN)✓ Health check passed$(NC)"; \
-		$(DOCKER) kill $(CONTAINER_NAME) > /dev/null 2>&1 || true; \
-		exit 0; \
 	else \
 		echo "$(YELLOW)✗ Health check failed$(NC)"; \
 		$(DOCKER) kill $(CONTAINER_NAME) > /dev/null 2>&1 || true; \
 		exit 1; \
 	fi
+	@echo "Running Go integration tests..."
+	@GOBOXD_URL=http://localhost:18080 $(GO) test -v -tags=integration ./tests/... || ( \
+		echo "$(YELLOW)✗ Integration tests failed$(NC)"; \
+		$(DOCKER) kill $(CONTAINER_NAME) > /dev/null 2>&1 || true; \
+		exit 1 \
+	)
+	@echo "$(GREEN)✓ Integration tests passed$(NC)"
+	@$(DOCKER) kill $(CONTAINER_NAME) > /dev/null 2>&1 || true
+	@exit 0
 
 # Run load test script
 load:
