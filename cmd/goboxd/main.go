@@ -95,6 +95,7 @@ func main() {
 
 	// Setup router with structured logging and recovery
 	r := chi.NewRouter()
+	r.Use(mw.CORS)
 	r.Use(mw.Logger) // Custom structured JSON logger (replaces chi's middleware.Logger)
 	r.Use(middleware.Recoverer)
 
