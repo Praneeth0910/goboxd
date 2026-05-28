@@ -52,7 +52,21 @@ func ProbeLanguage(lang config.Language) ProbeResult {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, cmdName, "--version")
+	versionArg := "--version"
+	cmdBase := cmdName
+	if idx := strings.LastIndex(cmdBase, "/"); idx != -1 {
+		cmdBase = cmdBase[idx+1:]
+	}
+	switch cmdBase {
+	case "go":
+		versionArg = "version"
+	case "kotlinc":
+		versionArg = "-version"
+	case "iverilog":
+		versionArg = "-V"
+	}
+
+	cmd := exec.CommandContext(ctx, cmdName, versionArg)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return ProbeResult{OK: false, Error: err.Error()}
