@@ -324,25 +324,27 @@ func runCommand(
 
 	timedOut := ctx.Err() == context.DeadlineExceeded
 
-	var memoryExceeded bool
+	var isKilled bool
 	if runErr != nil {
 		var exitErr *exec.ExitError
 		if errors.As(runErr, &exitErr) {
 			if exitErr.ExitCode() == 137 {
-				memoryExceeded = true
+				isKilled = true
 			}
 		}
 	}
 
 	logStr := nsjailLogBuf.String()
-	if strings.Contains(logStr, "signal: 9") || strings.Contains(logStr, "rlimit") {
-		memoryExceeded = true
+	if strings.Contains(logStr, "signal: 9") {
+		isKilled = true
 	}
 
-	// reduce false positives for exit code 137 and signal 9
-	if memoryExceeded && !strings.Contains(logStr, "rlimit") {
-		if !strings.Contains(logStr, "memory") && !strings.Contains(logStr, "OOM") && !strings.Contains(logStr, "[STATS]") {
-			memoryExceeded = false
+	var memoryExceeded bool
+	if strings.Contains(logStr, "rlimit") {
+		memoryExceeded = true
+	} else if isKilled {
+		if strings.Contains(logStr, "memory") || strings.Contains(logStr, "OOM") || strings.Contains(logStr, "[STATS]") {
+			memoryExceeded = true
 		}
 	}
 
