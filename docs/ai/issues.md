@@ -241,13 +241,13 @@ When multi-stage Docker builds are employed to fetch specific runtime versions (
 Accurately classify sandbox memory limit exceedances (`memory_exceeded`) without falsely catching other types of hard kills.
 
 **What went wrong:**
-`runCommand` detected OOMs solely by checking if the process exited with code `137` or if the nsjail log contained `signal: 9`. However, `137` and `signal: 9` are ambiguous and can be triggered by any manual `SIGKILL`, leading to false positives if the process was killed for other reasons (e.g., time limits terminating the jail abruptly).
+`runCommand` detected OOMs solely by checking if the process exited with code `137` or if the nsjail log contained `signal: 9`. However, `137` and `signal: 9` are ambiguous and can be triggered by any manual `SIGKILL`, leading to false positives. My initial fix attempted to add a third 'un-setting' block to reduce false positives, but it was logically broken and created a regression where legitimate OOMs were cancelled out.
 
 **How I resolved it:**
-Updated the memory limit detection to parse the nsjail structured log output for explicit confirmation. Exit code `137` or `signal: 9` is only classified as an OOM if the log string also contains `memory`, `OOM`, or `[STATS]` (nsjail's cgroup memory tracking fields). Otherwise, it falls back to a standard runtime error or timeout.
+Refactored the logic into a single, corroborated flow. We now track if the process was explicitly killed (`isKilled = true` via `137` or `signal: 9`). We then declare an OOM if a soft limit was hit (`rlimit` in logs), OR if the process was explicitly killed (`isKilled`) AND corroborated by `memory`, `OOM`, or `[STATS]` in the logs. This guarantees we don't accidentally override legitimate conditions.
 
 **What I learned:**
-Exit codes are highly generic. To accurately report the cause of a crash in a sandboxed environment, we must cross-reference exit codes with explicit kernel/cgroup logs (like nsjail's memory limit stats).
+Exit codes are highly generic. To accurately report crashes, we must cross-reference exit codes with kernel/cgroup logs. Additionally, when fixing conditional logic, it's safer to completely refactor the flow into explicitly corroborated logic rather than stacking 'reset' blocks that can introduce confusing state regressions.
 
 ## May 28, 2026 - `/readyz` endpoint returning stale compiler cache
 
