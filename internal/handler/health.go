@@ -69,8 +69,8 @@ func (h *HealthHandler) startBackgroundProbes() {
 	defer ticker.Stop()
 	for range ticker.C {
 		newProbes := make(map[string]runner.ProbeResult)
-		for langID, lang := range h.cfg.Languages {
-			newProbes[langID] = runner.ProbeLanguage(lang)
+		for langID := range h.cfg.Languages {
+			newProbes[langID] = runner.ProbeLanguage(h.cfg.Languages[langID])
 		}
 
 		h.mu.Lock()
