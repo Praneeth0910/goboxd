@@ -127,15 +127,14 @@ func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string
 		maxProcesses = 64
 	}
 
-	rlimitAs := strconv.Itoa(memoryMB)
 	if langID == "go" {
-		rlimitAs = "inf"
+		memoryMB = 4096
 	}
 
 	args := []string{
 		"--mode", "o",
 		"--time_limit", strconv.Itoa(wallTimeS),
-		"--rlimit_as", rlimitAs,
+		"--rlimit_as", strconv.Itoa(memoryMB),
 		"--rlimit_nproc", strconv.Itoa(maxProcesses),
 		"--max_cpus", "1",
 		"--log_fd", "3",
@@ -173,15 +172,14 @@ func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd stri
 		maxProcesses = 100
 	}
 
-	rlimitAs := strconv.Itoa(memoryMB)
 	if langID == "go" {
-		rlimitAs = "inf"
+		memoryMB = 4096
 	}
 
 	args := []string{
 		"--mode", "o",
 		"--time_limit", strconv.Itoa(wallTimeS),
-		"--rlimit_as", rlimitAs,
+		"--rlimit_as", strconv.Itoa(memoryMB),
 		"--rlimit_nproc", strconv.Itoa(maxProcesses),
 		"--max_cpus", "1",
 		"--log_fd", "3",
