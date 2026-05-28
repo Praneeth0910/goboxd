@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>goboxd — sandbox executor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0a0f;
+    --surface:   #111118;
+    --border:    #1e1e2e;
+    --border2:   #2a2a3e;
+    --text:      #e2e2f0;
+    --muted:     #6b6b8a;
+    --accent:    #7c6af7;
+    --accent2:   #a78bfa;
+    --green:     #22c55e;
+    --red:       #ef4444;
+    --orange:    #f97316;
+    --yellow:    #eab308;
+    --cyan:      #06b6d4;
+    --mono:      'JetBrains Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 48px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    gap: 12px;
+  }
+
+  .logo {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.6; transform: scale(0.85); }
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .lang-select {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    outline: none;
+    min-width: 150px;
+    transition: border-color .15s;
+  }
+  .lang-select:focus { border-color: var(--accent); }
+
+  .server-input {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    outline: none;
+    width: 200px;
+    transition: border-color .15s, color .15s;
+  }
+  .server-input:focus { border-color: var(--accent); color: var(--text); }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background .3s;
+    flex-shrink: 0;
+  }
+  .status-dot.ok     { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-dot.error  { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+
+  .run-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 7px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: background .15s, transform .1s;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .run-btn:hover   { background: var(--accent2); }
+  .run-btn:active  { transform: scale(0.97); }
+  .run-btn:disabled { background: var(--border2); cursor: not-allowed; color: var(--muted); }
+
+  .run-btn .kbd {
+    font-size: 10px;
+    opacity: 0.7;
+    background: rgba(255,255,255,0.15);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ── main layout ── */
+  main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── left panel: editor ── */
+  .editor-panel {
+    display: flex;
+    flex-direction: column;
+    width: 55%;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    height: 36px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .panel-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  #monaco-container {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── right panel ── */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── tests section ── */
+  .tests-section {
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    max-height: 45%;
+    overflow: hidden;
+  }
+
+  .tests-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    height: 36px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .add-test-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .add-test-btn:hover { color: var(--accent2); border-color: var(--accent); }
+
+  .tests-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .tests-list::-webkit-scrollbar { width: 4px; }
+  .tests-list::-webkit-scrollbar-track { background: transparent; }
+  .tests-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .test-case {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .test-case.result-accepted { border-color: var(--green); }
+  .test-case.result-wrong    { border-color: var(--red); }
+  .test-case.result-error    { border-color: var(--orange); }
+  .test-case.result-tle      { border-color: var(--yellow); }
+
+  .test-case-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .test-num {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .test-status-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    display: none;
+  }
+  .badge-accepted  { background: rgba(34,197,94,.15);  color: var(--green);  display: inline; }
+  .badge-wrong     { background: rgba(239,68,68,.15);   color: var(--red);    display: inline; }
+  .badge-error     { background: rgba(249,115,22,.15);  color: var(--orange); display: inline; }
+  .badge-tle       { background: rgba(234,179,8,.15);   color: var(--yellow); display: inline; }
+  .badge-pending   { background: rgba(107,107,138,.15); color: var(--muted);  display: inline; }
+
+  .remove-test {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color .15s;
+  }
+  .remove-test:hover { color: var(--red); }
+
+  .test-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .test-field {
+    display: flex;
+    flex-direction: column;
+  }
+  .test-field:first-child { border-right: 1px solid var(--border); }
+
+  .field-label {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 5px 10px 3px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .test-textarea {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 10px;
+    resize: none;
+    min-height: 52px;
+    outline: none;
+    line-height: 1.5;
+  }
+  .test-textarea::placeholder { color: var(--border2); }
+
+  /* actual output row */
+  .actual-output {
+    border-top: 1px solid var(--border);
+    padding: 5px 10px;
+    display: none;
+  }
+  .actual-output.visible { display: block; }
+  .actual-label {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .actual-value {
+    font-size: 11px;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .actual-value.mismatch { color: var(--red); }
+
+  /* ── output section ── */
+  .output-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    height: 36px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .result-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .result-status {
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .status-accepted          { color: var(--green); }
+  .status-build_failed      { color: var(--orange); }
+  .status-wrong_output      { color: var(--red); }
+  .status-runtime_error     { color: var(--red); }
+  .status-time_exceeded     { color: var(--yellow); }
+  .status-memory_exceeded   { color: var(--yellow); }
+  .status-internal_error    { color: var(--red); }
+  .status-output_whitespace_mismatch { color: var(--yellow); }
+
+  .result-time {
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .output-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .output-body::-webkit-scrollbar { width: 4px; }
+  .output-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .output-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 10px;
+    color: var(--muted);
+  }
+
+  .placeholder-icon {
+    font-size: 32px;
+    opacity: 0.3;
+  }
+
+  .placeholder-text {
+    font-size: 12px;
+    opacity: 0.5;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .output-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .output-block-title {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .output-block-content {
+    padding: 8px 10px;
+    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.6;
+    max-height: 200px;
+    overflow-y: auto;
+    color: var(--text);
+  }
+  .output-block-content.stderr { color: var(--orange); }
+  .output-block-content.empty  { color: var(--border2); font-style: italic; }
+  .output-block-content::-webkit-scrollbar { width: 3px; }
+  .output-block-content::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  /* spinner */
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* notification */
+  .notif {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--text);
+    z-index: 100;
+    transform: translateY(60px);
+    opacity: 0;
+    transition: transform .25s, opacity .25s;
+  }
+  .notif.show { transform: translateY(0); opacity: 1; }
+  .notif.err  { border-color: var(--red); color: var(--red); }
+
+  /* resize handle */
+  .resize-handle {
+    width: 4px;
+    background: var(--border);
+    cursor: col-resize;
+    transition: background .15s;
+    flex-shrink: 0;
+  }
+  .resize-handle:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    goboxd
+  </div>
+
+  <div class="controls">
+    <select class="lang-select" id="langSelect">
+      <option value="">loading languages…</option>
+    </select>
+
+    <input class="server-input" id="serverUrl"
+           value="http://localhost:8080"
+           placeholder="http://localhost:8080"
+           title="goboxd server URL" />
+
+    <div class="status-dot" id="statusDot" title="Server status"></div>
+  </div>
+
+  <button class="run-btn" id="runBtn" onclick="runCode()">
+    ▶ Run
+    <span class="kbd">Ctrl+↵</span>
+  </button>
+</header>
+
+<main>
+  <!-- editor -->
+  <div class="editor-panel" id="editorPanel">
+    <div class="panel-header">
+      <span class="panel-title">editor</span>
+      <div class="panel-actions">
+        <button class="icon-btn" onclick="clearEditor()" title="Clear editor">clear</button>
+        <button class="icon-btn" onclick="loadStarter()" title="Load starter code">starter</button>
+      </div>
+    </div>
+    <div id="monaco-container"></div>
+  </div>
+
+  <div class="resize-handle" id="resizeHandle"></div>
+
+  <!-- right -->
+  <div class="right-panel">
+
+    <!-- tests -->
+    <div class="tests-section">
+      <div class="tests-header">
+        <span class="panel-title">test cases</span>
+        <button class="add-test-btn" onclick="addTestCase()">+ add test</button>
+      </div>
+      <div class="tests-list" id="testsList"></div>
+    </div>
+
+    <!-- output -->
+    <div class="output-section">
+      <div class="output-header">
+        <span class="panel-title">output</span>
+        <div class="result-summary" id="resultSummary">
+          <span style="font-size:10px;color:var(--muted)">press run or ctrl+enter</span>
+        </div>
+      </div>
+      <div class="output-body" id="outputBody">
+        <div class="output-placeholder">
+          <div class="placeholder-icon">⬡</div>
+          <div class="placeholder-text">
+            write code, add test cases<br>then hit run
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="notif" id="notif"></div>
+
+<!-- Monaco Editor -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+<script>
+// ─── state ───────────────────────────────────────────────────────────────────
+let editor = null;
+let languages = {};
+let testCount = 0;
+
+const STARTERS = {
+  py3:     'n = int(input())\nprint(n * n)\n',
+  cpp:     '#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}\n',
+  c:       '#include <stdio.h>\nint main() {\n    int a, b;\n    scanf("%d %d", &a, &b);\n    printf("%d\\n", a + b);\n    return 0;\n}\n',
+  java:    'import java.util.Scanner;\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int a = sc.nextInt(), b = sc.nextInt();\n        System.out.println(a + b);\n    }\n}\n',
+  bash:    'read a b\necho $((a + b))\n',
+  node:    'const lines = [];\nprocess.stdin.on("data", d => lines.push(d));\nprocess.stdin.on("end", () => {\n    const [a, b] = lines.join("").trim().split(" ").map(Number);\n    console.log(a + b);\n});\n',
+  verilog: 'module main;\ninitial begin\n    $display("hello");\n    $finish;\nend\nendmodule\n',
+  rust:    'use std::io::{self, BufRead};\nfn main() {\n    let stdin = io::stdin();\n    let line = stdin.lock().lines().next().unwrap().unwrap();\n    let nums: Vec<i64> = line.split_whitespace()\n        .map(|x| x.parse().unwrap()).collect();\n    println!("{}", nums[0] + nums[1]);\n}\n',
+  go:      'package main\nimport "fmt"\nfunc main() {\n    var a, b int\n    fmt.Scan(&a, &b)\n    fmt.Println(a + b)\n}\n',
+  kotlin:  'fun main() {\n    val (a, b) = readLine()!!.trim().split(" ").map { it.toInt() }\n    println(a + b)\n}\n',
+};
+
+const LANG_MODES = {
+  py3: 'python', cpp: 'cpp', c: 'c', java: 'java',
+  bash: 'shell', node: 'javascript', verilog: 'verilog',
+  rust: 'rust', go: 'go', kotlin: 'kotlin',
+};
+
+// ─── Monaco init ─────────────────────────────────────────────────────────────
+require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+require(['vs/editor/editor.main'], () => {
+  monaco.editor.defineTheme('goboxd', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment',  foreground: '4a4a6a', fontStyle: 'italic' },
+      { token: 'keyword',  foreground: 'a78bfa', fontStyle: 'bold' },
+      { token: 'string',   foreground: '86efac' },
+      { token: 'number',   foreground: 'fbbf24' },
+      { token: 'type',     foreground: '67e8f9' },
+      { token: 'function', foreground: 'c4b5fd' },
+    ],
+    colors: {
+      'editor.background':           '#0a0a0f',
+      'editor.foreground':           '#e2e2f0',
+      'editorLineNumber.foreground': '#2a2a3e',
+      'editorLineNumber.activeForeground': '#6b6b8a',
+      'editor.selectionBackground':  '#7c6af720',
+      'editor.lineHighlightBackground': '#111118',
+      'editorCursor.foreground':     '#a78bfa',
+      'editorIndentGuide.background1': '#1e1e2e',
+      'editorWidget.background':     '#111118',
+      'editorSuggestWidget.background': '#111118',
+      'editorSuggestWidget.border':  '#1e1e2e',
+    }
+  });
+
+  editor = monaco.editor.create(document.getElementById('monaco-container'), {
+    value: STARTERS['py3'],
+    language: 'python',
+    theme: 'goboxd',
+    fontSize: 13,
+    fontFamily: "'JetBrains Mono', monospace",
+    fontLigatures: true,
+    lineNumbers: 'on',
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+    padding: { top: 12, bottom: 12 },
+    wordWrap: 'on',
+    automaticLayout: true,
+    renderLineHighlight: 'line',
+    smoothScrolling: true,
+    cursorBlinking: 'smooth',
+    cursorSmoothCaretAnimation: 'on',
+    bracketPairColorization: { enabled: true },
+    tabSize: 4,
+  });
+
+  // Ctrl+Enter to run
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runCode);
+
+  // init
+  loadLanguages();
+  addTestCase();
+  setupResize();
+});
+
+// ─── server / language loading ────────────────────────────────────────────────
+function serverUrl() {
+  return document.getElementById('serverUrl').value.replace(/\/$/, '');
+}
+
+async function loadLanguages() {
+  const dot = document.getElementById('statusDot');
+  try {
+    const r = await fetch(`${serverUrl()}/info`);
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    dot.className = 'status-dot ok';
+
+    const sel = document.getElementById('langSelect');
+    sel.innerHTML = '';
+    languages = {};
+
+    data.languages.forEach(lang => {
+      languages[lang.id] = lang;
+      const opt = document.createElement('option');
+      opt.value = lang.id;
+      opt.textContent = `${lang.name}  (${lang.id})`;
+      sel.appendChild(opt);
+    });
+
+    // default to py3 if exists
+    if (languages['py3']) sel.value = 'py3';
+
+  } catch(e) {
+    dot.className = 'status-dot error';
+    showNotif('cannot reach server — is goboxd running?', true);
+  }
+}
+
+document.getElementById('serverUrl').addEventListener('change', loadLanguages);
+document.getElementById('langSelect').addEventListener('change', function() {
+  const mode = LANG_MODES[this.value] || 'plaintext';
+  monaco.editor.setModelLanguage(editor.getModel(), mode);
+  loadStarter();
+});
+
+// ─── test cases ───────────────────────────────────────────────────────────────
+function addTestCase() {
+  testCount++;
+  const id = testCount;
+  const list = document.getElementById('testsList');
+
+  const div = document.createElement('div');
+  div.className = 'test-case';
+  div.id = `test-${id}`;
+  div.innerHTML = `
+    <div class="test-case-header">
+      <span class="test-num">test ${id}</span>
+      <span class="test-status-badge" id="badge-${id}"></span>
+      <button class="remove-test" onclick="removeTest(${id})" title="Remove">✕</button>
+    </div>
+    <div class="test-fields">
+      <div class="test-field">
+        <div class="field-label">stdin</div>
+        <textarea class="test-textarea" id="stdin-${id}" placeholder="(empty)"></textarea>
+      </div>
+      <div class="test-field">
+        <div class="field-label">expected stdout</div>
+        <textarea class="test-textarea" id="expected-${id}" placeholder="expected output"></textarea>
+      </div>
+    </div>
+    <div class="actual-output" id="actual-${id}">
+      <div class="actual-label">actual output</div>
+      <div class="actual-value" id="actual-val-${id}"></div>
+    </div>`;
+
+  list.appendChild(div);
+  list.scrollTop = list.scrollHeight;
+}
+
+function removeTest(id) {
+  const el = document.getElementById(`test-${id}`);
+  if (el) el.remove();
+}
+
+function getTestCases() {
+  const cases = [];
+  document.querySelectorAll('.test-case').forEach(tc => {
+    const id = tc.id.replace('test-', '');
+    const stdin = document.getElementById(`stdin-${id}`).value;
+    const expected = document.getElementById(`expected-${id}`).value;
+    cases.push({ id, stdin, expected_stdout: expected });
+  });
+  return cases;
+}
+
+// ─── run ──────────────────────────────────────────────────────────────────────
+async function runCode() {
+  const btn = document.getElementById('runBtn');
+  const lang = document.getElementById('langSelect').value;
+  if (!lang) { showNotif('select a language first', true); return; }
+
+  const source = editor.getValue();
+  if (!source.trim()) { showNotif('editor is empty', true); return; }
+
+  const tests = getTestCases();
+  if (!tests.length) { showNotif('add at least one test case', true); return; }
+
+  // reset test case UI
+  tests.forEach(t => {
+    const tc = document.getElementById(`test-${t.id}`);
+    tc.className = 'test-case';
+    const badge = document.getElementById(`badge-${t.id}`);
+    badge.className = 'test-status-badge badge-pending';
+    badge.textContent = 'running';
+    document.getElementById(`actual-${t.id}`).className = 'actual-output';
+  });
+
+  // loading state
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> running…';
+  document.getElementById('resultSummary').innerHTML =
+    '<div class="spinner"></div>';
+  document.getElementById('outputBody').innerHTML =
+    '<div class="output-placeholder"><div class="placeholder-text">executing…</div></div>';
+
+  const payload = {
+    language: lang,
+    source,
+    tests: tests.map(t => ({ stdin: t.stdin, expected_stdout: t.expected_stdout })),
+  };
+
+  // java needs source_filename
+  if (lang === 'java') payload.source_filename = 'Solution.java';
+
+  try {
+    const t0 = Date.now();
+    const res = await fetch(`${serverUrl()}/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const elapsed = Date.now() - t0;
+    const data = await res.json();
+    renderResult(data, elapsed, tests);
+  } catch(e) {
+    showNotif('request failed — ' + e.message, true);
+    document.getElementById('outputBody').innerHTML =
+      `<div class="output-placeholder"><div class="placeholder-text" style="color:var(--red)">${e.message}</div></div>`;
+    document.getElementById('resultSummary').innerHTML = '';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '▶ Run <span class="kbd">Ctrl+↵</span>';
+  }
+}
+
+// ─── render result ────────────────────────────────────────────────────────────
+function renderResult(data, elapsed, tests) {
+  const status = data.status || 'internal_error';
+
+  // summary
+  const statusClass = 'status-' + status.replace(/_/g,'-');
+  document.getElementById('resultSummary').innerHTML = `
+    <span class="result-status ${statusClass}">${status}</span>
+    <span class="result-time">${elapsed}ms total</span>`;
+
+  // update test case badges
+  (data.tests || []).forEach((t, i) => {
+    if (i >= tests.length) return;
+    const id = tests[i].id;
+    const tc = document.getElementById(`test-${id}`);
+    const badge = document.getElementById(`badge-${id}`);
+    const s = t.status;
+
+    tc.className = 'test-case ' + (
+      s === 'accepted'          ? 'result-accepted' :
+      s === 'wrong_output' || s === 'output_whitespace_mismatch' ? 'result-wrong' :
+      s === 'time_exceeded' || s === 'memory_exceeded' ? 'result-tle' :
+      'result-error'
+    );
+
+    badge.textContent = s;
+    badge.className = 'test-status-badge ' + (
+      s === 'accepted'    ? 'badge-accepted' :
+      s === 'wrong_output'|| s === 'output_whitespace_mismatch' ? 'badge-wrong' :
+      s === 'time_exceeded'||s==='memory_exceeded' ? 'badge-tle' :
+      'badge-error'
+    );
+
+    // show actual output
+    if (s !== 'accepted') {
+      const actualDiv = document.getElementById(`actual-${id}`);
+      const actualVal = document.getElementById(`actual-val-${id}`);
+      actualDiv.className = 'actual-output visible';
+      actualVal.textContent = t.stdout || '(empty)';
+      actualVal.className = 'actual-value' + (s === 'wrong_output' ? ' mismatch' : '');
+    }
+  });
+
+  // output body
+  const body = document.getElementById('outputBody');
+  body.innerHTML = '';
+
+  // build result
+  if (data.build) {
+    const bs = data.build;
+    body.appendChild(makeBlock(
+      `build — ${bs.status}  ${bs.duration_ms}ms`,
+      bs.stdout || '(no stdout)',
+      bs.status !== 'ok'
+    ));
+    if (bs.stderr) {
+      body.appendChild(makeBlock('build stderr', bs.stderr, true));
+    }
+  }
+
+  // per-test output
+  if (data.tests && data.tests.length > 0) {
+    data.tests.forEach((t, i) => {
+      const label = `test ${i+1} — ${t.status}  ${t.duration_ms}ms`;
+      if (t.stdout) body.appendChild(makeBlock(label, t.stdout, false));
+      if (t.stderr) body.appendChild(makeBlock(`test ${i+1} stderr`, t.stderr, true));
+      if (!t.stdout && !t.stderr) {
+        body.appendChild(makeBlock(label, '(no output)', false));
+      }
+    });
+  }
+
+  if (!body.children.length) {
+    body.innerHTML = `<div class="output-placeholder">
+      <div class="placeholder-icon">${status === 'accepted' ? '✓' : '✗'}</div>
+      <div class="placeholder-text">${status}</div>
+    </div>`;
+  }
+}
+
+function makeBlock(title, content, isErr) {
+  const div = document.createElement('div');
+  div.className = 'output-block';
+  div.innerHTML = `
+    <div class="output-block-title">${escHtml(title)}</div>
+    <div class="output-block-content ${isErr ? 'stderr' : ''} ${!content.trim() ? 'empty' : ''}">${escHtml(content)}</div>`;
+  return div;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+function clearEditor() {
+  editor.setValue('');
+  editor.focus();
+}
+
+function loadStarter() {
+  const lang = document.getElementById('langSelect').value;
+  const code = STARTERS[lang];
+  if (code) editor.setValue(code);
+  editor.focus();
+}
+
+function showNotif(msg, isErr) {
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.className = 'notif show' + (isErr ? ' err' : '');
+  setTimeout(() => n.className = 'notif', 3000);
+}
+
+// ─── resize handle ────────────────────────────────────────────────────────────
+function setupResize() {
+  const handle = document.getElementById('resizeHandle');
+  const panel = document.getElementById('editorPanel');
+  let dragging = false, startX, startW;
+
+  handle.addEventListener('mousedown', e => {
+    dragging = true;
+    startX = e.clientX;
+    startW = panel.offsetWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const w = Math.max(300, Math.min(startW + e.clientX - startX,
+      document.body.offsetWidth - 300));
+    panel.style.width = w + 'px';
+    editor.layout();
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (dragging) {
+      dragging = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+  });
+}
+</script>
+</body>
+</html>
