@@ -220,3 +220,45 @@ For the benchmark table I used the maximum observed latency across the 21 valid 
 
 **What I learned:**
 Load-testing tools can have their own bugs that look like server or network issues. Always cross-check tool behaviour by varying flags independently (e.g., `--disable-keepalive`) to isolate the variable. For endpoints slower than ~200 ms, hey v0.1.5 at c=1 is not reliable — use a higher concurrency level or a different tool (e.g., `ab`, `wrk`, or a simple sequential `curl` loop) to collect single-client baselines.
+
+## May 28, 2026 - Go runtime uses outdated apt package instead of 1.22 builder image
+
+**What I was trying to do:**
+Ensure the Go runtime environment inside the sandbox utilizes the official `golang:1.22` version specified in `languages.yaml`, rather than falling back to an older Debian `golang-go` package installed via `apt-get`.
+
+**What went wrong:**
+`languages.yaml` pointed to `/usr/bin/go`. The Dockerfile `apt-get install` included `golang-go`, which naturally placed it at `/usr/bin/go`, but it was an older version provided by Debian, not the 1.22 version compiled in the `go-builder` stage (which sat in `/usr/local/go`). 
+
+**How I resolved it:**
+Removed `golang-go` from the `apt-get` dependencies in the runtime stage. Added a `COPY --from=go-builder /usr/local/go /usr/local/go` command and explicitly symlinked `/usr/local/go/bin/go` and `/usr/local/go/bin/gofmt` to `/usr/bin/`. This satisfied the path expected by `languages.yaml` while upgrading the runtime to the correct version.
+
+**What I learned:**
+When multi-stage Docker builds are employed to fetch specific runtime versions (like Go 1.22), it's critical to avoid accidentally installing older, conflicting OS-level packages via `apt-get`.
+
+## May 28, 2026 - False positives in OOM detection via exit code 137
+
+**What I was trying to do:**
+Accurately classify sandbox memory limit exceedances (`memory_exceeded`) without falsely catching other types of hard kills.
+
+**What went wrong:**
+`runCommand` detected OOMs solely by checking if the process exited with code `137` or if the nsjail log contained `signal: 9`. However, `137` and `signal: 9` are ambiguous and can be triggered by any manual `SIGKILL`, leading to false positives if the process was killed for other reasons (e.g., time limits terminating the jail abruptly).
+
+**How I resolved it:**
+Updated the memory limit detection to parse the nsjail structured log output for explicit confirmation. Exit code `137` or `signal: 9` is only classified as an OOM if the log string also contains `memory`, `OOM`, or `[STATS]` (nsjail's cgroup memory tracking fields). Otherwise, it falls back to a standard runtime error or timeout.
+
+**What I learned:**
+Exit codes are highly generic. To accurately report the cause of a crash in a sandboxed environment, we must cross-reference exit codes with explicit kernel/cgroup logs (like nsjail's memory limit stats).
+
+## May 28, 2026 - `/readyz` endpoint returning stale compiler cache
+
+**What I was trying to do:**
+Ensure the `/readyz` probe accurately reflects the live state of the language compilers (Python, C++, Java, etc.), responding with a 503 if any compiler binary goes missing or fails post-startup.
+
+**What went wrong:**
+The original `health.go` logic cached compiler statuses once at startup and never ran the probes again. Furthermore, the `Readyz` HTTP handler simply called `exec.LookPath()` per-request, which is inefficient and incomplete (it just checks if the binary exists in PATH, rather than properly invoking `--version`). 
+
+**How I resolved it:**
+Updated `HealthHandler` to include a `sync.RWMutex` protected map (`langProbes`). Initialized a background goroutine via `NewHealthHandler()` that loops every 60 seconds, re-runs the full `ProbeLanguage` checks for every configured language, and atomically updates the map. The `/readyz` handler now simply acquires an `RLock` and reads the live, cached probe state in memory.
+
+**What I learned:**
+Health checks in distributed systems need to reflect the live state without adding significant latency to the probe endpoint itself. A background prober loop protected by a reader-writer mutex provides both low-latency responses and accurate post-startup health monitoring.
