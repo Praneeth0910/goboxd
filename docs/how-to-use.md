@@ -24,7 +24,11 @@ To follow this guide, you need the following tools installed on your computer:
 4. **jq**: (Optional but recommended) Formats and colors the sandbox outputs in your terminal.
 
 ---
+# There are two ways to use this sandbox
+## Method - 1: Using the API (http://localhost:8080)
+## Method - 2: Using the web interface (http://localhost:8081) -> Scroll down to line 270
 
+## Method - 1
 ## 📥 Step 1: Clone the Repository & Build the Image
 
 To test `goboxd` locally, first clone the repository and build the Docker image.
@@ -262,4 +266,32 @@ docker stop goboxd-service && docker rm goboxd-service
 > Then, make your curl requests to `http://localhost:8085/run`.
 
 ---
+## Method 2 : Using the web interface (http://localhost:8081)
 
+The `goboxd` repository includes a fully-functional, single-page web UI that lets you write, test, and execute code interactively against your running sandbox API. 
+
+The demo interface provides:
+- Live language loading from the API
+- A premium Monaco Editor with syntax highlighting and a custom dark theme
+- Multi-test case support with expected output matching
+- Live build logs and per-test execution details
+
+### Step 1: Start the `goboxd` Server
+Ensure the backend API is running on port 8080 (the default port that the demo expects):
+```bash
+make build && make run
+```
+*(Alternatively, run the container via `docker-compose up -d` or `docker run` as shown in previous sections).*
+
+### Step 2: Serve the Demo UI
+Open a **new terminal** window, navigate to the project directory, and start a simple web server to serve the `index.html` file:
+```bash
+cd docs/demo
+python3 -m http.server 8081
+```
+
+### Step 3: Open the UI in Your Browser
+Navigate to [http://localhost:8081](http://localhost:8081) in your web browser. 
+
+- You should see the language dropdown automatically populate with the available languages.
+- You can write your code, define test cases with `stdin` and `expected stdout`, and click the **Run** button (or press `Ctrl+Enter`) to test your code in real-time.
