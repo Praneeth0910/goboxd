@@ -34,7 +34,7 @@ FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash ca-certificates \
     python3 g++ gcc nodejs default-jdk iverilog \
-    rustc kotlin \
+    rustc kotlin ruby \
     libnl-route-3-200 libprotobuf32t64 \
     && rm -rf /var/lib/apt/lists/*
 
