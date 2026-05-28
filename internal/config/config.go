@@ -33,9 +33,10 @@ type BuildConfig struct {
 
 // RunConfig defines how to execute code
 type RunConfig struct {
-	Cmd    string         `yaml:"cmd"`
-	Args   []string       `yaml:"args"`
-	Limits ResourceLimits `yaml:"limits"`
+	Cmd           string         `yaml:"cmd"`
+	Args          []string       `yaml:"args"`
+	Limits        ResourceLimits `yaml:"limits"`
+	FlagAllowlist []string       `yaml:"flag_allowlist"`
 }
 
 // Language represents configuration for a supported language

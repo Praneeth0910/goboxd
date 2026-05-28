@@ -174,6 +174,15 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if req.Run != nil && len(req.Run.Flags) > 0 {
+		if lang.Run.FlagAllowlist != nil {
+			if err := validate.ValidateFlags(req.Run.Flags, lang.Run.FlagAllowlist); err != nil {
+				writeError(w, "disallowed_flag", err.Error())
+				return
+			}
+		}
+	}
+
 	// 7. Validate test count
 	if len(req.Tests) < 1 || len(req.Tests) > h.cfg.MaxTests {
 		writeError(w, "invalid_test_count", fmt.Sprintf("test count must be between 1 and %d", h.cfg.MaxTests))
