@@ -2,7 +2,7 @@
 
 # goboxd
 
-**A Go HTTP service for executing untrusted code in isolated sandboxes.**
+**A robust, secure Go HTTP service for executing untrusted code in isolated sandboxes.**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.23-00ADD8.svg?logo=go&logoColor=white)](https://go.dev)
@@ -15,56 +15,140 @@
 
 ## Overview
 
-goboxd is an HTTP service written in Go that compiles and runs untrusted code inside isolated sandboxes and returns the result. Optional test cases can be supplied to assert behaviour against expected output. It is built for safe execution of code across many languages, with strict isolation, bounded concurrency, and a plug and play language registry.
+`goboxd` safely compiles and runs untrusted code across multiple programming languages inside isolated `nsjail` sandboxes. It supports real-time stdout matching against predefined test cases, making it perfect for competitive programming platforms, online IDEs, and code assessment tools.
 
 ## Features
 
-- Plug and play language registry driven by YAML
-- Process isolation using Linux namespaces and cgroups
-- Bounded concurrency with request queuing
-- Fully containerised for local development and deployment
-- Per request resource limits for time, memory, and processes
-- Liveness and readiness probes for orchestration
+-  **Strict Isolation**: Process separation using Linux namespaces and cgroups via `nsjail`.
+-  **Plug & Play Languages**: Easily add or configure runtimes via a central `languages.yaml`. Supports 10+ languages (Go, Python, C++, Java, Node, Rust, etc.).
+-  **Bounded Concurrency**: Built-in request queuing to prevent system overload.
+-  **Resource Limits**: Configurable per-request limits for time, memory, file descriptors, and processes.
+-  **Interactive UI Included**: Features a built-in web frontend (`docs/demo`) powered by Monaco Editor for live testing.
+-  **Fully Containerized**: No host dependencies other than Docker.
 
-## Getting started
+## Project Structure
 
-### Prerequisites
-
-- Docker with Compose v2
-
-No Go toolchain or system dependencies are required on the host. Everything runs in containers.
-
-### Installation
-
-```sh
-git clone https://github.com/thesouldev/goboxd.git
-cd goboxd
-make build
-```
-
-### Usage
-
-```sh
-make run          # start the service on :8080
-make test         # run unit tests
-make integration  # run end to end tests
-make lint         # run static analysis
-```
-
-## Project structure
-
-```
+```text
 .
-├── cmd/goboxd/   binary entry point
-├── internal/     private application packages
-├── docs/         api, languages, security, benchmarks, architecture
-└── tests/        integration tests
+├── cmd/
+│   └── goboxd/
+│       └── main.go
+├── docs/
+│   ├── ai/
+│   │   ├── adrs.md
+│   │   ├── issues.md
+│   │   ├── patterns.md
+│   │   ├── plan-evolution.md
+│   │   ├── postmortem.md
+│   │   └── prompts.md
+│   ├── demo/
+│   │   └── index.html
+│   ├── api.md
+│   ├── architecture.md
+│   ├── benchmarks.md
+│   ├── how-to-use.md
+│   ├── languages.md
+│   ├── logging.md
+│   ├── security.md
+│   └── testing.md
+├── internal/
+│   ├── config/
+│   │   ├── config.go
+│   │   └── config_test.go
+│   ├── handler/
+│   │   ├── health.go
+│   │   ├── run.go
+│   │   └── run_test.go
+│   ├── middleware/
+│   │   ├── cors.go
+│   │   └── logger.go
+│   ├── runner/
+│   │   ├── probe.go
+│   │   ├── runner.go
+│   │   ├── runner_test.go
+│   │   └── sweep.go
+│   ├── sandbox/
+│   │   ├── dir.go
+│   │   └── limits.go
+│   ├── stats/
+│   │   └── stats.go
+│   ├── status/
+│   │   └── status.go
+│   └── validate/
+│       ├── filename.go
+│       ├── flags.go
+│       ├── table_driven_test.go
+│       └── validate_test.go
+├── scripts/
+│   ├── attack-test.go
+│   ├── demo-attacks.sh
+│   ├── demo-flag-attacks.sh
+│   ├── fix-wsl.sh
+│   ├── load-test.sh
+│   ├── run_benchmarks.sh
+│   └── test-filename-attacks.py
+├── tests/
+│   ├── config_test.go
+│   ├── phase2_test.go
+│   ├── phase3_test.go
+│   └── status_test.go
+├── Dockerfile
+├── docker-compose.yml
+├── go.mod
+├── go.sum
+├── languages.yaml
+├── LICENSE
+├── Makefile
+├── nsjail
+├── payload.json
+├── project_test.py
+├── README.md
+├── smoke_test.sh
+├── STAGE1-CHECKLIST.md
+├── STAGE1-QUICK-REF.md
+├── SUBMISSION-GUIDE.md
+├── test_docker.sh
+├── test_endpoints.sh
+├── test_endpoints_v2.sh
+└── TESTING.md
 ```
 
-## Contributing
+## Quick Start & Usage
 
-Contributions are welcome. Open an issue to discuss substantial changes before sending a pull request.
+### 1. Build and Run the Server
+Ensure Docker is installed, then build and start the sandbox API (runs on `http://localhost:8080`):
+```bash
+make build
+make run
+```
 
-## License
+### 2. Access the Interactive Web UI
+In a new terminal, serve the frontend demo to interact with your running `goboxd` instance:
+```bash
+cd docs/demo
+python3 -m http.server 8081
+```
+Open **[http://localhost:8081](http://localhost:8081)** in your browser to write and test code interactively!
 
-This project is distributed under the GNU General Public License v3.0. See [LICENSE](LICENSE) for the full text.
+### 3. Or Use the API Directly
+Send a `POST` request to `/run` with your code:
+```bash
+curl -s -X POST http://localhost:8080/run \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py3","source":"print(int(input())*2)","tests":[{"stdin":"5","expected_stdout":"10\n"}]}'
+```
+
+*For more detailed API commands and troubleshooting, see the [How to Use Guide](docs/how-to-use.md).*
+
+## 🔗 Quick Links
+
+- [📖 How to Use goboxd](docs/how-to-use.md)
+- [🏗 Architecture Details](docs/architecture.md)
+- [🔌 Supported Languages](docs/languages.md)
+- [🔒 Security & Threat Model](docs/security.md)
+
+## 🤝 Contributing
+Contributions are welcome! Please open an issue to discuss significant changes before submitting a pull request. Run `make test` and `make lint` locally before pushing.
+
+## 📄 License
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
