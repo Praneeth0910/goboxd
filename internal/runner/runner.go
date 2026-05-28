@@ -127,7 +127,7 @@ func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string
 		maxProcesses = 64
 	}
 
-	if langID == "go" {
+	if langID == "go" || langID == "java" || langID == "kotlin" || langID == "node" {
 		memoryMB = 4096
 	}
 
@@ -136,17 +136,29 @@ func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string
 		"--time_limit", strconv.Itoa(wallTimeS),
 		"--rlimit_as", strconv.Itoa(memoryMB),
 		"--rlimit_nproc", strconv.Itoa(maxProcesses),
+		"--rlimit_nofile", "1024",
 		"--max_cpus", "1",
 		"--log_fd", "3",
 		"--bindmount_ro", "/usr:/usr",
 		"--bindmount_ro", "/lib:/lib",
 		"--bindmount_ro", "/lib64:/lib64",
 		"--bindmount_ro", "/bin:/bin",
+		"--bindmount_ro", "/etc:/etc",
+	}
+
+	if langID == "java" || langID == "kotlin" {
+		args = append(args,
+			"--bindmount_ro", "/etc/alternatives:/etc/alternatives",
+			"--bindmount_ro", "/etc/java-21-openjdk:/etc/java-21-openjdk",
+		)
+	}
+
+	args = append(args,
 		"--env", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		"--chroot", jailDir,
 		"--",
 		cmd,
-	}
+	)
 	return append(args, cmdArgs...)
 }
 
@@ -172,7 +184,7 @@ func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd stri
 		maxProcesses = 100
 	}
 
-	if langID == "go" {
+	if langID == "go" || langID == "java" || langID == "kotlin" || langID == "node" {
 		memoryMB = 4096
 	}
 
@@ -181,6 +193,7 @@ func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd stri
 		"--time_limit", strconv.Itoa(wallTimeS),
 		"--rlimit_as", strconv.Itoa(memoryMB),
 		"--rlimit_nproc", strconv.Itoa(maxProcesses),
+		"--rlimit_nofile", "1024",
 		"--max_cpus", "1",
 		"--log_fd", "3",
 		"--rlimit_fsize", "1024",
@@ -583,6 +596,17 @@ func runTestCase(
 	stdinReader := strings.NewReader(tc.Stdin)
 	res := runCommand(
 		ctx, jailDir, runLimits, runCmd, runArgs, stdinReader, phaseRun, lang.ID)
+
+	if lang.ID == "verilog" {
+		lines := strings.Split(res.Stdout, "\n")
+		var cleaned []string
+		for _, line := range lines {
+			if !strings.Contains(line, "$finish called at") {
+				cleaned = append(cleaned, line)
+			}
+		}
+		res.Stdout = strings.Join(cleaned, "\n")
+	}
 
 	var testStatus string
 	switch {

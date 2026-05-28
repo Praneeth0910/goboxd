@@ -97,7 +97,9 @@ languages:
     run:
       cmd: /usr/bin/java
       args:
-        - "{{class}}"
+        - "-cp"
+        - "."
+        - "Solution"
       limits:
         wall_time_s: 5
         memory_kb: 524288
