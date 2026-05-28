@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -40,20 +40,41 @@ type HealthHandler struct {
 	buildVersion string
 	buildCommit  string
 	nsjailProbe  runner.ProbeResult
+	
+	mu           sync.RWMutex
 	langProbes   map[string]runner.ProbeResult
+	
 	cfg          *config.Config
 	st           *stats.Stats
 }
 
 // NewHealthHandler creates a new HealthHandler with the given probe results.
 func NewHealthHandler(version, commit string, nsjail runner.ProbeResult, langs map[string]runner.ProbeResult, cfg *config.Config, st *stats.Stats) *HealthHandler {
-	return &HealthHandler{
+	h := &HealthHandler{
 		buildVersion: version,
 		buildCommit:  commit,
 		nsjailProbe:  nsjail,
 		langProbes:   langs,
 		cfg:          cfg,
 		st:           st,
+	}
+	
+	go h.startBackgroundProbes()
+	
+	return h
+}
+
+func (h *HealthHandler) startBackgroundProbes() {
+	ticker := time.NewTicker(60 * time.Second)
+	for range ticker.C {
+		newProbes := make(map[string]runner.ProbeResult)
+		for langID, lang := range h.cfg.Languages {
+			newProbes[langID] = runner.ProbeLanguage(lang)
+		}
+		
+		h.mu.Lock()
+		h.langProbes = newProbes
+		h.mu.Unlock()
 	}
 }
 
@@ -67,23 +88,15 @@ func (h *HealthHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 	allOK := h.nsjailProbe.OK
 	langResp := make(map[string]map[string]interface{})
 
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
 	for langID := range h.cfg.Languages {
-		lang := h.cfg.Languages[langID]
 		probe := h.langProbes[langID]
-
-		cmdName := lang.Run.Cmd
-		if lang.Build != nil && lang.Build.Cmd != "" {
-			cmdName = lang.Build.Cmd
-		}
-
-		_, err := exec.LookPath(cmdName)
-		ok := err == nil
+		ok := probe.OK
 
 		if !ok {
 			allOK = false
-			probe.Error = err.Error()
-		} else {
-			probe.Error = ""
 		}
 
 		m := map[string]interface{}{
@@ -188,6 +201,7 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare Languages
 	langs := make([]LanguageInfo, 0, len(h.cfg.Languages))
+	h.mu.RLock()
 	for id := range h.cfg.Languages {
 		lang := h.cfg.Languages[id]
 		probe := h.langProbes[id]
@@ -205,6 +219,7 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 			DefaultRunLimits: limits,
 		})
 	}
+	h.mu.RUnlock()
 
 	// Sort languages by ID to make JSON response deterministic
 	sort.Slice(langs, func(i, j int) bool {

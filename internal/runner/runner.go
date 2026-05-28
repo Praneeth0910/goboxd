@@ -339,6 +339,13 @@ func runCommand(
 		memoryExceeded = true
 	}
 
+	// reduce false positives for exit code 137 and signal 9
+	if memoryExceeded && !strings.Contains(logStr, "rlimit") {
+		if !strings.Contains(logStr, "memory") && !strings.Contains(logStr, "OOM") && !strings.Contains(logStr, "[STATS]") {
+			memoryExceeded = false
+		}
+	}
+
 	return CommandResult{
 		Stdout:         outBuf.String(),
 		Stderr:         errBuf.String(),

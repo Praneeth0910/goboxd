@@ -34,7 +34,7 @@ FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash ca-certificates \
     python3 g++ gcc nodejs default-jdk iverilog \
-    rustc golang-go kotlin \
+    rustc kotlin \
     libnl-route-3-200 libprotobuf32t64 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -42,6 +42,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=nsjail-builder /nsjail/nsjail /usr/sbin/nsjail
 RUN chmod 0755 /usr/sbin/nsjail
 COPY --from=go-builder /usr/local/bin/goboxd /usr/local/bin/goboxd
+
+# Copy Go from builder stage and symlink to /usr/bin/go
+COPY --from=go-builder /usr/local/go /usr/local/go
+RUN ln -s /usr/local/go/bin/go /usr/bin/go && \
+    ln -s /usr/local/go/bin/gofmt /usr/bin/gofmt
+
 
 RUN mkdir -p /etc/goboxd
 COPY languages.yaml /etc/goboxd/languages.yaml
