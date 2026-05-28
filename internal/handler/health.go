@@ -40,10 +40,10 @@ type HealthHandler struct {
 	buildVersion string
 	buildCommit  string
 	nsjailProbe  runner.ProbeResult
-	
+
 	mu           sync.RWMutex
 	langProbes   map[string]runner.ProbeResult
-	
+
 	cfg          *config.Config
 	st           *stats.Stats
 }
@@ -58,20 +58,21 @@ func NewHealthHandler(version, commit string, nsjail runner.ProbeResult, langs m
 		cfg:          cfg,
 		st:           st,
 	}
-	
+
 	go h.startBackgroundProbes()
-	
+
 	return h
 }
 
 func (h *HealthHandler) startBackgroundProbes() {
 	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
 	for range ticker.C {
 		newProbes := make(map[string]runner.ProbeResult)
 		for langID, lang := range h.cfg.Languages {
 			newProbes[langID] = runner.ProbeLanguage(lang)
 		}
-		
+
 		h.mu.Lock()
 		h.langProbes = newProbes
 		h.mu.Unlock()
@@ -201,25 +202,27 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare Languages
 	langs := make([]LanguageInfo, 0, len(h.cfg.Languages))
-	h.mu.RLock()
-	for id := range h.cfg.Languages {
-		lang := h.cfg.Languages[id]
-		probe := h.langProbes[id]
+	func() {
+		h.mu.RLock()
+		defer h.mu.RUnlock()
+		for id := range h.cfg.Languages {
+			lang := h.cfg.Languages[id]
+			probe := h.langProbes[id]
 
-		limits := DefaultRunLimits{
-			WallTimeS:    lang.Run.Limits.WallTimeS,
-			MemoryKB:     lang.Run.Limits.MemoryKB,
-			MaxProcesses: lang.Run.Limits.MaxProcesses,
+			limits := DefaultRunLimits{
+				WallTimeS:    lang.Run.Limits.WallTimeS,
+				MemoryKB:     lang.Run.Limits.MemoryKB,
+				MaxProcesses: lang.Run.Limits.MaxProcesses,
+			}
+
+			langs = append(langs, LanguageInfo{
+				ID:               id,
+				Name:             lang.Name,
+				Version:          probe.Version,
+				DefaultRunLimits: limits,
+			})
 		}
-
-		langs = append(langs, LanguageInfo{
-			ID:               id,
-			Name:             lang.Name,
-			Version:          probe.Version,
-			DefaultRunLimits: limits,
-		})
-	}
-	h.mu.RUnlock()
+	}()
 
 	// Sort languages by ID to make JSON response deterministic
 	sort.Slice(langs, func(i, j int) bool {
