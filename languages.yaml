@@ -177,27 +177,27 @@ languages:
         max_processes: 64
 
   go:
-  id: go
-  name: Go
-  source_filename: solution.go
-  artifact: solution
-  build:
-    cmd: /usr/local/go/bin/go
-    args:
-      - "build"
-      - "-o"
-      - "{{artifact}}"
-      - "{{source}}"
-    limits:
-      wall_time_s: 15
-      memory_kb: 1048576
-      max_processes: 100
-  run:
-    cmd: ./{{artifact}}
-    limits:
-      wall_time_s: 3
-      memory_kb: 524288
-      max_processes: 64
+    id: go
+    name: Go
+    source_filename: solution.go
+    artifact: solution
+    build:
+      cmd: /usr/local/go/bin/go
+      args:
+        - "build"
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 15
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 3
+        memory_kb: 524288
+        max_processes: 64
 
   kotlin:
     id: kotlin
@@ -225,17 +225,17 @@ languages:
         memory_kb: 524288
         max_processes: 100
   ruby:
-  id: ruby
-  name: Ruby
-  source_filename: solution.rb
-  run:
-    cmd: /usr/bin/ruby
-    args:
-      - "{{source}}"
-    limits:
-      wall_time_s: 9
-      memory_kb: 102400
-      max_processes: 100
+    id: ruby
+    name: Ruby
+    source_filename: solution.rb
+    run:
+      cmd: /usr/bin/ruby
+      args:
+        - "{{source}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 102400
+        max_processes: 100
 max_source_bytes: 262144
 max_tests: 50
 max_concurrent: 0

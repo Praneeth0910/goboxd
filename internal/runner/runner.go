@@ -109,7 +109,7 @@ func nsjailAvailable() bool {
 // buildNsjailRunArgs constructs nsjail args for the RUN phase.
 // --chroot is set to jailDir, so all paths inside the jail are jail-relative.
 // E.g. source file at jailDir/solution.py is accessed as /solution.py inside the jail.
-func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string) []string {
+func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string, langID string) []string {
 	wallTimeS := limits.WallTimeS
 	if wallTimeS <= 0 {
 		wallTimeS = 10
@@ -127,10 +127,15 @@ func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string
 		maxProcesses = 64
 	}
 
+	rlimitAs := strconv.Itoa(memoryMB)
+	if langID == "go" {
+		rlimitAs = "inf"
+	}
+
 	args := []string{
 		"--mode", "o",
 		"--time_limit", strconv.Itoa(wallTimeS),
-		"--rlimit_as", strconv.Itoa(memoryMB),
+		"--rlimit_as", rlimitAs,
 		"--rlimit_nproc", strconv.Itoa(maxProcesses),
 		"--max_cpus", "1",
 		"--log_fd", "3",
@@ -150,7 +155,7 @@ func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string
 // The chroot is set to / (host root) with a writable bind-mount of jailDir
 // so the compiler can write the artifact directly into jailDir using absolute paths.
 // PATH is injected so collect2/ld can be found by g++.
-func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string) []string {
+func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string, langID string) []string {
 	wallTimeS := limits.WallTimeS
 	if wallTimeS <= 0 {
 		wallTimeS = 30
@@ -168,17 +173,26 @@ func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd stri
 		maxProcesses = 100
 	}
 
+	rlimitAs := strconv.Itoa(memoryMB)
+	if langID == "go" {
+		rlimitAs = "inf"
+	}
+
 	args := []string{
 		"--mode", "o",
 		"--time_limit", strconv.Itoa(wallTimeS),
-		"--rlimit_as", strconv.Itoa(memoryMB),
+		"--rlimit_as", rlimitAs,
 		"--rlimit_nproc", strconv.Itoa(maxProcesses),
 		"--max_cpus", "1",
 		"--log_fd", "3",
+		"--rlimit_fsize", "1024",
 		"--bindmount_ro", "/usr:/usr",
 		"--bindmount_ro", "/lib:/lib",
 		"--bindmount_ro", "/lib64:/lib64",
 		"--bindmount_ro", "/bin:/bin",
+		"--bindmount", "/tmp:/tmp",
+		"--env", "TMPDIR=/tmp",
+		"--env", "GOCACHE=/tmp",
 		// rw bind-mount so compiler can write the output artifact
 		"--bindmount", jailDir + ":" + jailDir,
 		"--env", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
@@ -223,6 +237,7 @@ func runCommand(
 	cmdArgs []string,
 	stdin io.Reader,
 	phase runPhase,
+	langID string,
 ) CommandResult {
 	var cmd *exec.Cmd
 	var nsjailLogReader *os.File
@@ -233,9 +248,9 @@ func runCommand(
 		var njArgs []string
 		switch phase {
 		case phaseBuild:
-			njArgs = buildNsjailBuildArgs(jailDir, limits, cmdStr, cmdArgs)
+			njArgs = buildNsjailBuildArgs(jailDir, limits, cmdStr, cmdArgs, langID)
 		default:
-			njArgs = buildNsjailRunArgs(jailDir, limits, cmdStr, cmdArgs)
+			njArgs = buildNsjailRunArgs(jailDir, limits, cmdStr, cmdArgs, langID)
 		}
 		cmd = exec.CommandContext(ctx, nsjailPath(), njArgs...)
 
@@ -478,7 +493,7 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 		defer cancel()
 
 		res := runCommand(ctx, jailDir, buildLimits,
-			lang.Build.Cmd, buildArgs, nil, phaseBuild)
+			lang.Build.Cmd, buildArgs, nil, phaseBuild, lang.ID)
 
 		buildRes = BuildResult{
 			Stdout:     res.Stdout,
@@ -569,7 +584,7 @@ func runTestCase(
 
 	stdinReader := strings.NewReader(tc.Stdin)
 	res := runCommand(
-		ctx, jailDir, runLimits, runCmd, runArgs, stdinReader, phaseRun)
+		ctx, jailDir, runLimits, runCmd, runArgs, stdinReader, phaseRun, lang.ID)
 
 	var testStatus string
 	switch {
