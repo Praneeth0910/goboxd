@@ -41,11 +41,11 @@ type HealthHandler struct {
 	buildCommit  string
 	nsjailProbe  runner.ProbeResult
 
-	mu           sync.RWMutex
-	langProbes   map[string]runner.ProbeResult
+	mu         sync.RWMutex
+	langProbes map[string]runner.ProbeResult
 
-	cfg          *config.Config
-	st           *stats.Stats
+	cfg *config.Config
+	st  *stats.Stats
 }
 
 // NewHealthHandler creates a new HealthHandler with the given probe results.
