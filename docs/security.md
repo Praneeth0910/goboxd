@@ -136,3 +136,13 @@ We replaced the `os.WriteFile` call with a safe open using `os.OpenFile` and the
 
 ### Location
 `internal/runner/runner.go:356-368`
+
+---
+
+## Further Reading
+
+- [Getting Started](getting-started.md) — Setup guide for beginners
+- [Development Guide](development.md) — Contributing, testing, and CI/CD
+- [Architecture](architecture.md) — System design and request lifecycle
+- [Testing](testing.md) — Validation test suite documentation
+

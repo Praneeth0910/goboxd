@@ -2,6 +2,8 @@
 
 Welcome to **goboxd**! This guide is designed for absolute beginners. You will learn how to start the sandbox, execute Python and C++ programs safely, and test its security boundaries using simple commands.
 
+> **See also**: [Getting Started](getting-started.md) for initial setup · [Development Guide](development.md) for contributing · [API Reference](api.md) for all endpoints
+
 ---
 
 ## 🌟 What is goboxd?
