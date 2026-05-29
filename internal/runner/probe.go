@@ -72,11 +72,15 @@ func ProbeLanguage(lang config.Language) ProbeResult {
 		return ProbeResult{OK: false, Error: err.Error()}
 	}
 
-	// Return the first line of output as the version
-	lines := strings.SplitN(string(out), "\n", 2)
+	// Return the first non-warning line of output as the version
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	version := ""
-	if len(lines) > 0 {
-		version = strings.TrimSpace(lines[0])
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" && !strings.Contains(line, "warning:") && !strings.Contains(line, "Warning:") {
+			version = line
+			break
+		}
 	}
 
 	return ProbeResult{OK: true, Version: version}
