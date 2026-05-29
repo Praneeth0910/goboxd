@@ -558,7 +558,7 @@
       <span class="panel-title">editor</span>
       <div class="panel-actions">
         <button class="icon-btn" onclick="clearEditor()" title="Clear editor">clear</button>
-        <button class="icon-btn" onclick="loadStarter()" title="Load starter code">starter</button>
+        <button class="icon-btn" onclick="loadStarter(true)" title="Load starter code">starter</button>
       </div>
     </div>
     <div id="monaco-container"></div>
@@ -621,12 +621,13 @@ const STARTERS = {
   rust:    'use std::io::{self, BufRead};\nfn main() {\n    let stdin = io::stdin();\n    let line = stdin.lock().lines().next().unwrap().unwrap();\n    let nums: Vec<i64> = line.split_whitespace()\n        .map(|x| x.parse().unwrap()).collect();\n    println!("{}", nums[0] + nums[1]);\n}\n',
   go:      'package main\nimport "fmt"\nfunc main() {\n    var a, b int\n    fmt.Scan(&a, &b)\n    fmt.Println(a + b)\n}\n',
   kotlin:  'fun main() {\n    val (a, b) = readLine()!!.trim().split(" ").map { it.toInt() }\n    println(a + b)\n}\n',
+  ruby:    'a, b = gets.split.map(&:to_i)\nputs a + b\n',
 };
 
 const LANG_MODES = {
   py3: 'python', cpp: 'cpp', c: 'c', java: 'java',
   bash: 'shell', node: 'javascript', verilog: 'verilog',
-  rust: 'rust', go: 'go', kotlin: 'kotlin',
+  rust: 'rust', go: 'go', kotlin: 'kotlin', ruby: 'ruby',
 };
 
 // ─── Monaco init ─────────────────────────────────────────────────────────────
@@ -714,7 +715,10 @@ async function loadLanguages() {
     });
 
     // default to py3 if exists
-    if (languages['py3']) sel.value = 'py3';
+    if (languages['py3']) {
+      sel.value = 'py3';
+      sel.dispatchEvent(new Event('change'));
+    }
 
   } catch(e) {
     dot.className = 'status-dot error';
@@ -938,10 +942,17 @@ function clearEditor() {
   editor.focus();
 }
 
-function loadStarter() {
+function loadStarter(force = false) {
   const lang = document.getElementById('langSelect').value;
   const code = STARTERS[lang];
-  if (code) editor.setValue(code);
+  if (!code) return;
+
+  const current = editor.getValue();
+  const isStarter = current === '' || Object.values(STARTERS).includes(current);
+
+  if (force || isStarter) {
+    editor.setValue(code);
+  }
   editor.focus();
 }
 
