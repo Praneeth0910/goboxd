@@ -266,7 +266,7 @@ func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd stri
 		"--",
 		cmd,
 	}
-	
+
 	if cgroupName != "" {
 		// Insert cgroup arguments before the environment variables and chroot which are at the end
 		// We'll just build it safely
@@ -284,7 +284,7 @@ func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd stri
 		}
 		args = newArgs
 	}
-	
+
 	return append(args, cmdArgs...)
 }
 
@@ -490,7 +490,7 @@ func runCommand(
 			}
 		}
 	}
-	
+
 	return CommandResult{
 		Stdout:         outBuf.String(),
 		Stderr:         errBuf.String(),

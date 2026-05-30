@@ -207,18 +207,17 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 		h.mu.RLock()
 		defer h.mu.RUnlock()
 		for id := range h.cfg.Languages {
-			lang := h.cfg.Languages[id]
 			probe := h.langProbes[id]
 
 			limits := DefaultRunLimits{
-				WallTimeS:    lang.Run.Limits.WallTimeS,
-				MemoryKB:     lang.Run.Limits.MemoryKB,
-				MaxProcesses: lang.Run.Limits.MaxProcesses,
+				WallTimeS:    h.cfg.Languages[id].Run.Limits.WallTimeS,
+				MemoryKB:     h.cfg.Languages[id].Run.Limits.MemoryKB,
+				MaxProcesses: h.cfg.Languages[id].Run.Limits.MaxProcesses,
 			}
 
 			langs = append(langs, LanguageInfo{
 				ID:               id,
-				Name:             lang.Name,
+				Name:             h.cfg.Languages[id].Name,
 				Version:          probe.Version,
 				DefaultRunLimits: limits,
 			})
