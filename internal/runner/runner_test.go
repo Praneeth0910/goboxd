@@ -10,8 +10,6 @@ import (
 	"github.com/thesouldev/goboxd/internal/sandbox"
 )
 
-
-
 // TestCapReaderBoundsOutput verifies that CapReader correctly limits child process output
 // to prevent OOM attacks from runaway programs writing gigabytes of data.
 // This test does NOT use nsjail; it directly tests the CapReader wrapping behavior.

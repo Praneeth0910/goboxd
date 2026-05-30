@@ -20,8 +20,6 @@ import (
 	"github.com/thesouldev/goboxd/internal/status"
 )
 
-
-
 // ---------------------------------------------------------------------------
 // Request / Response types owned by the runner layer
 // ---------------------------------------------------------------------------
@@ -607,7 +605,11 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 			buildLimits.WallTimeS = 30 // generous default for compilation
 		}
 		if req.Build != nil {
-			buildLimits, _ = buildLimits.MergeWithCap(req.Build.Limits)
+			var err error
+			buildLimits, err = buildLimits.MergeWithCap(req.Build.Limits)
+			if err != nil {
+				return RunResult{Status: status.StatusInternalError}, fmt.Errorf("build limits error: %w", err)
+			}
 		}
 
 		// Add 2s buffer so nsjail's internal --time_limit fires first and cleans up gracefully
@@ -696,7 +698,14 @@ func runTestCase(
 	if runLimits.WallTimeS <= 0 {
 		runLimits.WallTimeS = 10
 	}
-	runLimits, _ = runLimits.MergeWithCap(req.Run.Limits)
+	var err error
+	runLimits, err = runLimits.MergeWithCap(req.Run.Limits)
+	if err != nil {
+		return TestResult{
+			Status: status.StatusInternalError,
+			Stderr: fmt.Sprintf("run limits error: %v", err),
+		}
+	}
 
 	// Add 2s buffer so nsjail's internal --time_limit fires first and cleans up gracefully
 	ctx, cancel := context.WithTimeout(context.Background(),
