@@ -175,11 +175,9 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Run != nil && len(req.Run.Flags) > 0 {
-		if lang.Run.FlagAllowlist != nil {
-			if err := validate.ValidateFlags(req.Run.Flags, lang.Run.FlagAllowlist); err != nil {
-				writeError(w, "disallowed_flag", err.Error())
-				return
-			}
+		if err := validate.ValidateFlags(req.Run.Flags, lang.Run.FlagAllowlist); err != nil {
+			writeError(w, "disallowed_flag", err.Error())
+			return
 		}
 	}
 
