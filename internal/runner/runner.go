@@ -91,6 +91,10 @@ type RunResult struct {
 // nsjail helpers
 // ---------------------------------------------------------------------------
 
+// cgroupBase is the cgroupv2 mount root. Defined as a constant to avoid
+// passing a path-separator-containing literal to filepath.Join (gocritic).
+const cgroupBase = "/sys/fs/cgroup/"
+
 const seccompPolicy = `POLICY goboxd_safe {
     KILL_PROCESS {
         ptrace,
@@ -348,7 +352,7 @@ func runCommand(
 		var cgroupName string
 		// Create cgroup directory for memory.peak tracking
 		cgroupName = fmt.Sprintf("goboxd-%d", time.Now().UnixNano())
-		cgroupPath = filepath.Join("/", "sys", "fs", "cgroup", cgroupName)
+		cgroupPath = cgroupBase + cgroupName
 		if err := os.Mkdir(cgroupPath, 0o755); err == nil {
 			defer func() {
 				// remove child cgroups nsjail created first
