@@ -143,7 +143,7 @@ func nsjailAvailable() bool {
 // buildNsjailRunArgs constructs nsjail args for the RUN phase.
 // --chroot is set to jailDir, so all paths inside the jail are jail-relative.
 // E.g. source file at jailDir/solution.py is accessed as /solution.py inside the jail.
-func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string, langID string) []string {
+func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string, langID string, cgroupName string) []string {
 	wallTimeS := limits.WallTimeS
 	if wallTimeS <= 0 {
 		wallTimeS = 10
@@ -171,6 +171,9 @@ func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string
 		"--rlimit_as", strconv.Itoa(memoryMB),
 		"--rlimit_nproc", strconv.Itoa(maxProcesses),
 		"--rlimit_nofile", "1024",
+		"--rlimit_core", "0",
+		"--rlimit_stack", "8",
+		"--rlimit_fsize", "100",
 		"--max_cpus", "1",
 		"--log_fd", "3",
 		"--bindmount_ro", "/usr:/usr",
@@ -187,7 +190,19 @@ func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string
 		)
 	}
 
+	if cgroupName != "" {
+		args = append(args,
+			"--cgroup_mem_parent", cgroupName,
+			"--cgroup_mem_swap_max", "0",
+			"--detect_cgroupv2",
+			"--cgroupv2_mount", "/sys/fs/cgroup",
+		)
+	}
+
 	args = append(args,
+		"--env", "HOME=/",
+		"--env", "TMP=/tmp",
+		"--env", "TMPDIR=/tmp",
 		"--env", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		"--seccomp_string", seccompPolicy,
 		"--chroot", jailDir,
@@ -201,7 +216,7 @@ func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string
 // The chroot is set to / (host root) with a writable bind-mount of jailDir
 // so the compiler can write the artifact directly into jailDir using absolute paths.
 // PATH is injected so collect2/ld can be found by g++.
-func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string, langID string) []string {
+func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string, langID string, cgroupName string) []string {
 	wallTimeS := limits.WallTimeS
 	if wallTimeS <= 0 {
 		wallTimeS = 30
@@ -229,14 +244,17 @@ func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd stri
 		"--rlimit_as", strconv.Itoa(memoryMB),
 		"--rlimit_nproc", strconv.Itoa(maxProcesses),
 		"--rlimit_nofile", "1024",
+		"--rlimit_core", "0",
+		"--rlimit_stack", "8",
+		"--rlimit_fsize", "100",
 		"--max_cpus", "1",
 		"--log_fd", "3",
-		"--rlimit_fsize", "1024",
 		"--bindmount_ro", "/usr:/usr",
 		"--bindmount_ro", "/lib:/lib",
 		"--bindmount_ro", "/lib64:/lib64",
 		"--bindmount_ro", "/bin:/bin",
 		"--bindmount", "/tmp:/tmp",
+		"--env", "HOME=/",
 		"--env", "TMPDIR=/tmp",
 		"--env", "GOCACHE=/tmp",
 		// rw bind-mount so compiler can write the output artifact
@@ -248,6 +266,25 @@ func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd stri
 		"--",
 		cmd,
 	}
+	
+	if cgroupName != "" {
+		// Insert cgroup arguments before the environment variables and chroot which are at the end
+		// We'll just build it safely
+		var newArgs []string
+		for i, a := range args {
+			if a == "--env" && args[i+1] == "HOME=/" {
+				newArgs = append(newArgs,
+					"--cgroup_mem_parent", cgroupName,
+					"--cgroup_mem_swap_max", "0",
+					"--detect_cgroupv2",
+					"--cgroupv2_mount", "/sys/fs/cgroup",
+				)
+			}
+			newArgs = append(newArgs, a)
+		}
+		args = newArgs
+	}
+	
 	return append(args, cmdArgs...)
 }
 
@@ -274,6 +311,21 @@ type CommandResult struct {
 	TimedOut       bool
 	Error          error
 	MemoryExceeded bool
+	MemoryPeakKB   int64
+	NsjailLog      string
+}
+
+func parseMemoryExceeded(logStr string) bool {
+	logLow := strings.ToLower(logStr)
+	return strings.Contains(logStr, "memory limit exceeded") ||
+		strings.Contains(logLow, "out of memory") ||
+		strings.Contains(logLow, "oom kill") ||
+		strings.Contains(logLow, "cgroup memory") ||
+		(strings.Contains(logLow, "memory.max") && strings.Contains(logStr, "killed by signal"))
+}
+
+func parseSIGXCPU(logStr string) bool {
+	return strings.Contains(logStr, "SIGXCPU")
 }
 
 func runCommand(
@@ -290,14 +342,37 @@ func runCommand(
 	var nsjailLogReader *os.File
 	var nsjailLogWriter *os.File
 	var pipeErr error
+	var cgroupPath string
 
 	if nsjailAvailable() {
+		var cgroupName string
+		// Create cgroup directory for memory.peak tracking
+		cgroupName = fmt.Sprintf("goboxd-%d", time.Now().UnixNano())
+		cgroupPath = filepath.Join("/sys/fs/cgroup", cgroupName)
+		if err := os.Mkdir(cgroupPath, 0o755); err == nil {
+			defer func() {
+				// remove child cgroups nsjail created first
+				if entries, _ := os.ReadDir(cgroupPath); entries != nil {
+					for _, e := range entries {
+						if e.IsDir() {
+							os.Remove(filepath.Join(cgroupPath, e.Name()))
+						}
+					}
+				}
+				os.Remove(cgroupPath)
+			}()
+		} else {
+			cgroupName = ""
+			cgroupPath = ""
+			slog.Warn("failed to create cgroup, memory.peak will not be available", "error", err)
+		}
+
 		var njArgs []string
 		switch phase {
 		case phaseBuild:
-			njArgs = buildNsjailBuildArgs(jailDir, limits, cmdStr, cmdArgs, langID)
+			njArgs = buildNsjailBuildArgs(jailDir, limits, cmdStr, cmdArgs, langID, cgroupName)
 		default:
-			njArgs = buildNsjailRunArgs(jailDir, limits, cmdStr, cmdArgs, langID)
+			njArgs = buildNsjailRunArgs(jailDir, limits, cmdStr, cmdArgs, langID, cgroupName)
 		}
 		cmd = exec.CommandContext(ctx, nsjailPath(), njArgs...)
 
@@ -401,15 +476,21 @@ func runCommand(
 		isKilled = true
 	}
 
-	var memoryExceeded bool
-	if strings.Contains(logStr, "rlimit") {
-		memoryExceeded = true
-	} else if isKilled {
-		if strings.Contains(logStr, "memory") || strings.Contains(logStr, "OOM") || strings.Contains(logStr, "[STATS]") {
-			memoryExceeded = true
-		}
+	memoryExceeded := parseMemoryExceeded(logStr)
+	if !memoryExceeded && isKilled {
+		// Fallback for signal 9 based on old heuristic
+		memoryExceeded = strings.Contains(logStr, "memory") || strings.Contains(logStr, "OOM") || strings.Contains(logStr, "[STATS]")
 	}
 
+	var memoryPeakKB int64
+	if cgroupPath != "" {
+		if raw, err := os.ReadFile(filepath.Join(cgroupPath, "memory.peak")); err == nil {
+			if peak, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64); err == nil {
+				memoryPeakKB = peak / 1024
+			}
+		}
+	}
+	
 	return CommandResult{
 		Stdout:         outBuf.String(),
 		Stderr:         errBuf.String(),
@@ -417,6 +498,8 @@ func runCommand(
 		TimedOut:       timedOut,
 		Error:          runErr,
 		MemoryExceeded: memoryExceeded,
+		MemoryPeakKB:   memoryPeakKB,
+		NsjailLog:      logStr,
 	}
 }
 
@@ -649,6 +732,8 @@ func runTestCase(
 	switch {
 	case res.TimedOut:
 		testStatus = status.StatusTimeExceeded
+	case parseSIGXCPU(res.NsjailLog):
+		testStatus = status.StatusTimeExceeded
 	case res.MemoryExceeded:
 		testStatus = status.StatusMemoryExceeded
 	case res.Error != nil:
@@ -662,9 +747,10 @@ func runTestCase(
 	}
 
 	return TestResult{
-		Status:     testStatus,
-		Stdout:     res.Stdout,
-		Stderr:     res.Stderr,
-		DurationMS: res.ElapsedMS,
+		Status:       testStatus,
+		Stdout:       res.Stdout,
+		Stderr:       res.Stderr,
+		DurationMS:   res.ElapsedMS,
+		MemoryPeakKB: res.MemoryPeakKB,
 	}
 }
