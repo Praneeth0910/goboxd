@@ -10,15 +10,11 @@ import (
 // If allowlist is nil or empty, all flags are rejected with an error.
 // Returns error listing all rejected flags, or nil if all flags are valid.
 func ValidateFlags(flags, allowlist []string) error {
-	// If no allowlist, reject all flags
+	if len(flags) == 0 {
+		return nil
+	}
 	if len(allowlist) == 0 {
-		if len(flags) == 0 {
-			return nil // No flags to reject
-		}
-		return ValidationError{
-			Code:    "invalid_flags",
-			Message: fmt.Sprintf("no flags allowed, but received %d flag(s)", len(flags)),
-		}
+		return fmt.Errorf("flags are not allowed for this language: %q", flags[0])
 	}
 
 	// Check each flag against the allowlist
