@@ -129,7 +129,7 @@ docker run -d \
 
 ## Step 4: Verify the Server is Running
 
-Check the health endpoint:
+Check the health endpoint:(You can start a new terminal here) 
 
 ```bash
 curl -s http://localhost:8080/healthz
@@ -318,13 +318,13 @@ Every response from `POST /run` uses the same structure. Here's what each field 
 
 | Status | What it means |
 |--------|--------------|
-| `accepted` | ✅ Output matches expected — test passed |
-| `wrong_output` | ❌ Output differs from expected |
-| `output_whitespace_mismatch` | ⚠️ Output differs only in whitespace (trailing newline, etc.) |
-| `runtime_error` | 💥 Program crashed (non-zero exit code) |
-| `time_exceeded` | ⏱️ Program took too long (hit wall time limit) |
-| `memory_exceeded` | 🧠 Program used too much memory (killed by OOM) |
-| `build_failed` | 🔨 Compilation failed (syntax errors, etc.) |
+| `accepted` |  Output matches expected — test passed |
+| `wrong_output` |  Output differs from expected |
+| `output_whitespace_mismatch` |  Output differs only in whitespace (trailing newline, etc.) |
+| `runtime_error` |  Program crashed (non-zero exit code) |
+| `time_exceeded` |  Program took too long (hit wall time limit) |
+| `memory_exceeded` |  Program used too much memory (killed by OOM) |
+| `build_failed` |  Compilation failed (syntax errors, etc.) |
 
 ---
 

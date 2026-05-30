@@ -14,7 +14,6 @@ services:
       - NSJAIL_PATH=/usr/sbin/nsjail
       - LANGUAGES_CONFIG=/etc/goboxd/languages.yaml
     privileged: true
-    cgroupns: host
     restart: unless-stopped
     deploy:
       resources:

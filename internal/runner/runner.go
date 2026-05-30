@@ -448,6 +448,9 @@ func runCommand(
 	}
 
 	timedOut := ctx.Err() == context.DeadlineExceeded
+	if !timedOut && elapsedMS >= int64(limits.WallTimeS)*1000 {
+		timedOut = true
+	}
 
 	var isKilled bool
 	if runErr != nil {
@@ -464,8 +467,10 @@ func runCommand(
 		isKilled = true
 	}
 
+	// If it timed out, it was killed by nsjail's internal time limit (SIGKILL)
+	// so it's not a memory limit, even if isKilled is true.
 	memoryExceeded := parseMemoryExceeded(logStr)
-	if !memoryExceeded && isKilled {
+	if !memoryExceeded && isKilled && !timedOut {
 		// Fallback for signal 9 based on old heuristic
 		memoryExceeded = strings.Contains(logStr, "memory") || strings.Contains(logStr, "OOM") || strings.Contains(logStr, "[STATS]")
 	}

@@ -1,7 +1,7 @@
 .PHONY: build run test integration load lint vet clean help
 
 # Variables
-DOCKER_COMPOSE  := docker-compose
+DOCKER_COMPOSE  := docker compose
 DOCKER          := docker
 GO              := go
 GOLANGCI_LINT   := golangci-lint
@@ -30,9 +30,9 @@ build:
 	$(DOCKER) build -t $(GOBOXD_IMAGE) .
 
 # Run with docker-compose
-run:
-	@echo "$(GREEN)Starting goboxd with docker-compose...$(NC)"
-	$(DOCKER_COMPOSE) up
+run: build
+	@echo "$(GREEN)Starting goboxd...$(NC)"
+	$(DOCKER) run --rm -p 8080:8080 -v $(PWD)/languages.yaml:/etc/goboxd/languages.yaml:ro --privileged --cgroupns=host $(GOBOXD_IMAGE)
 
 # Run Go unit tests
 test:
@@ -51,7 +51,7 @@ integration: build
 		--rm \
 		$(GOBOXD_IMAGE) > /dev/null
 	@echo "Waiting for container to be ready..."
-	@sleep 3
+	@sleep 5
 	@echo "Testing /healthz endpoint..."
 	@if $(DOCKER) run --rm --network host \
 		curlimages/curl:latest \
