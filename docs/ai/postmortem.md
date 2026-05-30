@@ -26,3 +26,50 @@ debian:trixie-slim specifically for GLIBC 2.41 — the pre-built nsjail binary
 needs it and bookworm only ships 2.36. The readyz probe was returning "ok" 
 the whole time because I was checking file existence, not actually running 
 nsjail. Silent failures are worse than loud ones.
+
+---
+
+# Postmortem — Team Sudo, GoBoxD Phase 2 (Security Hardening)
+
+## What actually broke (in order of pain)
+
+The lint cycle was the biggest time sink. I pushed the seccomp + cgroup changes
+after `go build && go vet` passed locally, assuming CI would be clean. It wasn't.
+`golangci-lint` with gocritic enabled flagged three things `go vet` doesn't care
+about: `paramTypeCombine` (consecutive same-type params), `errcheck` (discarded
+`os.ReadDir` error), and `filepathJoin` (literal `/` in `filepath.Join` args).
+The `filepathJoin` fix took three attempts — splitting `/sys/fs/cgroup` into
+`"/", "sys", "fs", "cgroup"` still triggered it because `"/"` contains a separator.
+The final fix was a `const cgroupBase = "/sys/fs/cgroup/"` with string concat.
+Three commits for what should have been zero.
+
+The cgroup scoping bug was more subtle. I declared `cgroupPath` inside the
+`if nsjailAvailable()` block, but needed to read `memory.peak` from it after
+`cmd.Wait()` — outside that block. The compiler caught it immediately, but it
+was a design mistake: variables needed across the full function lifecycle should
+be declared at function scope, not inside conditionals.
+
+## What surprised me
+
+How much of a differentiator the seccomp policy is. It's a string constant and
+two `--seccomp_string` flags — maybe 40 lines of code total — but it blocks 28
+syscalls at the kernel level and was worth 15% of the judging rubric. The ratio
+of implementation effort to competitive impact was the best of all 8 items.
+
+The `buildNsjailBuildArgs` cgroup insertion was more complex than expected.
+I initially tried to insert cgroup flags at a specific position in the args
+slice by iterating and looking for a sentinel value (`"--env"`, `"HOME=/"`).
+This worked but was fragile. In hindsight, I should have just appended the
+cgroup flags before the final `--chroot`/`--`/`cmd` block, which is always
+the last thing added to the slice.
+
+## What I'd do differently
+
+Run `golangci-lint` locally before every push. The three-commit lint fix cycle
+was entirely avoidable. I'd also declare all cross-scope variables (like
+`cgroupPath`) at function scope from the start, not try to minimize their
+visibility by scoping them inside conditionals.
+
+For the README rewrite, I spent time on an intermediate version (~300 words,
+too terse) before the user asked for a better one. Should have asked for
+preferences upfront rather than defaulting to minimal.

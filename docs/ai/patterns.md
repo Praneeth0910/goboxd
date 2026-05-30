@@ -28,3 +28,23 @@ Explicitly separate path construction based on the sandbox phase:
 
 **Where I used it:**
 [internal/runner/runner.go](../../../internal/runner/runner.go) - Separated `buildNsjailBuildArgs` (uses host root `/` with absolute paths) and `buildNsjailRunArgs` (uses jail dir root with relative paths like `"/"+sourceFilename`).
+
+## Constant-Based Path Construction for Lint-Safe Filesystem Paths
+
+**Context:** The `gocritic` linter flags any literal argument to `filepath.Join` that contains a path separator (`/`). When constructing paths under kernel pseudo-filesystems like `/sys/fs/cgroup/`, there's no way to use `filepath.Join` without triggering this diagnostic, because every possible decomposition still contains `/` in at least one segment.
+
+**Pattern:**
+Define the well-known base path as a package-level `const` (e.g., `const cgroupBase = "/sys/fs/cgroup/"`), then construct the full path via string concatenation: `path = cgroupBase + dynamicSuffix`. This satisfies the linter (no `filepath.Join` call with separators), avoids `filepath.Join` overhead for a fixed-prefix path, and makes the base path a single point of change.
+
+**Where I used it:**
+[internal/runner/runner.go](../../../internal/runner/runner.go) - `const cgroupBase = "/sys/fs/cgroup/"` used in `runCommand` to construct per-request cgroup paths as `cgroupBase + cgroupName`.
+
+## Graceful Fallback for Optional Kernel Features
+
+**Context:** Features like cgroupv2 `memory.peak` tracking depend on the host kernel and container runtime supporting cgroupv2 with the correct mount. In development/CI environments (e.g., GitHub Actions runners), these may not be available. The code should use the feature when available but degrade gracefully when it's not, without failing the request.
+
+**Pattern:**
+Attempt the privileged operation (e.g., `os.Mkdir` for the cgroup directory). If it succeeds, set up deferred cleanup and pass the feature name to downstream functions. If it fails, set the feature name to empty string and log a warning. Downstream code checks for empty string and skips the feature entirely. The API response field (e.g., `memory_peak_kb`) defaults to `0`, which callers already handle.
+
+**Where I used it:**
+[internal/runner/runner.go](../../../internal/runner/runner.go) - `runCommand` attempts cgroup creation; on failure, sets `cgroupName = ""` and `cgroupPath = ""`, causing `buildNsjailRunArgs` to skip cgroup flags and the post-execution `memory.peak` read to be skipped. The request completes successfully with `memory_peak_kb: 0`.

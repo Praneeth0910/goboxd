@@ -96,3 +96,59 @@ Implemented Phase-Specific nsjail Arguments in `runner.go` (`buildNsjailBuildArg
 - No surprises from v2 format migrations
 - Installation via binary (not snap) avoids confinement overhead
 - Anyone building this must use v1.x
+
+---
+
+## Seccomp Kafel Policy for Syscall Filtering
+
+**Context**: nsjail provides namespace-based isolation (PID, mount, network), but the kernel still exposes hundreds of syscalls to processes inside the jail. Advanced sandbox escapes have historically exploited syscalls like `ptrace`, `bpf`, `mount`, and `unshare` to break out of containers. A reference implementation ("Alpha") used a Kafel seccomp policy as its primary differentiator.
+
+**Options considered**:
+1. No seccomp filtering: Rely solely on namespaces and rlimits (current state)
+2. Seccomp allowlist: Enumerate the ~50 syscalls user code actually needs; deny everything else
+3. Seccomp denylist: Block only the known-dangerous syscalls; allow everything else
+
+**Decision**: Use a Kafel denylist policy (`KILL_PROCESS`) blocking 28 specific dangerous syscalls. The policy is defined as a Go string constant `seccompPolicy` and injected via `--seccomp_string` to both build and run phases.
+
+**Consequences**:
+- Kernel-level defense-in-depth: even if namespace isolation is bypassed, the blocked syscalls prevent privilege escalation
+- `KILL_PROCESS` (not `KILL`) ensures multi-threaded programs can't race past the filter
+- Denylist over allowlist chosen because compilers (Java, Kotlin) use unpredictable syscall sets that are hard to enumerate
+- Adding new blocked syscalls is a single line change in the constant
+- Testing requires a Docker environment with nsjail; unit tests skip seccomp verification
+
+---
+
+## Per-Request cgroupv2 Slices for Memory Tracking
+
+**Context**: The API response included a `memory_peak_kb` field, but it was hardcoded to `0`. Competing implementations read `memory.peak` from a cgroupv2 hierarchy to report actual peak memory from the kernel, giving judges precise memory usage data.
+
+**Options considered**:
+1. Parse nsjail log output for memory statistics (fragile, format varies by version)
+2. Use `/proc/{pid}/status` VmPeak field (only available while process is alive; race with cleanup)
+3. Create a per-request cgroupv2 directory, let nsjail manage it via `--cgroup_mem_parent`, read `memory.peak` after exit
+
+**Decision**: Option 3. Before each `runCommand` call, create a directory under `/sys/fs/cgroup/` named `goboxd-{nanosecond-timestamp}`. Pass it to nsjail via `--cgroup_mem_parent`, `--cgroup_mem_swap_max 0`, `--detect_cgroupv2`, and `--cgroupv2_mount /sys/fs/cgroup`. After the process exits, read `memory.peak` from the cgroup directory, parse the byte count, convert to KiB, and populate `CommandResult.MemoryPeakKB`. Clean up the cgroup directory in a deferred function.
+
+**Consequences**:
+- `memory_peak_kb` is now sourced from the kernel, not estimated
+- Swap is disabled (`--cgroup_mem_swap_max 0`), ensuring OOM kills happen immediately rather than silently swapping
+- If cgroup creation fails (e.g., running without cgroupv2 or without privileges), the code falls back gracefully — `cgroupName` is empty, no cgroup flags are passed, and `memory_peak_kb` remains `0`
+- The cgroup cleanup must handle nsjail-created child cgroups inside the parent before removing the parent directory
+
+---
+
+## Environment Allowlisting in nsjail
+
+**Context**: By default, nsjail inherits the parent process's environment variables. In a Docker container, this can include `NSJAIL_PATH`, `LANGUAGES_CONFIG`, and any secrets injected via `docker-compose.yml` or Kubernetes. Leaking these to user code is an information disclosure risk.
+
+**Options considered**:
+1. Trust Docker's isolation — assume env vars inside the container are safe to expose
+2. Use `--env` flags to explicitly set only the variables user code needs
+
+**Decision**: Option 2. Both `buildNsjailRunArgs` and `buildNsjailBuildArgs` now explicitly pass only `--env HOME=/`, `--env TMP=/tmp`, `--env TMPDIR=/tmp`, and `--env PATH=...`. No other environment variables reach user code.
+
+**Consequences**:
+- Host secrets, config paths, and internal env vars are never visible to sandboxed processes
+- Languages that depend on specific env vars (e.g., `JAVA_HOME`) would need explicit additions — currently Java works without it because the JDK is on `PATH`
+- Build phase additionally gets `--env GOCACHE=/tmp` for Go compilation

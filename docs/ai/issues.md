@@ -262,3 +262,77 @@ Updated `HealthHandler` to include a `sync.RWMutex` protected map (`langProbes`)
 
 **What I learned:**
 Health checks in distributed systems need to reflect the live state without adding significant latency to the probe endpoint itself. A background prober loop protected by a reader-writer mutex provides both low-latency responses and accurate post-startup health monitoring.
+
+## May 29, 2026 - JVM warning messages contaminating language version string in /info probe
+
+**What I was trying to do:**
+Return clean language version strings in the `/info` and `/readyz` endpoints. Each language's probe runs `<binary> --version` and captures the first line of output as the version string.
+
+**What went wrong:**
+Java and Kotlin JVMs sometimes print warning lines to stderr/stdout before the actual version string (e.g., `Warning: Unable to find default provider...`). The probe's `SplitN(output, "\n", 2)` always took the first line, so the version string for Java would occasionally be a JVM warning instead of `openjdk version "17.0.x"`.
+
+**How I resolved it:**
+Changed `ProbeLanguage` in `probe.go` to split the full output into all lines, then iterate and return the first non-empty line that doesn't contain `warning:` or `Warning:`. This skips JVM diagnostic noise and finds the actual version line.
+
+**What I learned:**
+Never assume the first line of a subprocess's output is the meaningful one. JVM-based tools (Java, Kotlin, Scala) are especially prone to prefixing output with diagnostic warnings. A simple filter loop is more robust than positional indexing.
+
+## May 29, 2026 - Web UI starter code overwriting user edits on language switch
+
+**What I was trying to do:**
+The Monaco editor web UI auto-loads starter code (a hello-world template) when the user selects a language from the dropdown.
+
+**What went wrong:**
+Every time the user switched languages, the editor replaced whatever code they had typed with the language's starter template. If a user wrote 50 lines of Python, switched to C++ to check something, then switched back to Python, their code was gone.
+
+**How I resolved it:**
+Added a per-language code cache in the JavaScript: when the user switches away from a language, the current editor content is saved to `languageCodeCache[currentLang]`. When switching to a new language, the editor loads from the cache if it exists, and only falls back to the starter template on the first visit. This preserves user edits across language switches.
+
+**What I learned:**
+Auto-loading convenience features (starter code, templates) must never destroy user state. A simple in-memory cache indexed by the selector value prevents data loss without adding complexity.
+
+## May 30, 2026 - gocritic filepathJoin lint rule vs. cgroup path construction
+
+**What I was trying to do:**
+Create a per-request cgroupv2 directory under `/sys/fs/cgroup/` using `filepath.Join` for the cgroup path used in nsjail memory tracking.
+
+**What went wrong:**
+The `gocritic` linter flagged `filepath.Join("/sys/fs/cgroup", cgroupName)` because any argument to `filepath.Join` containing a path separator (`/`) triggers the `filepathJoin` diagnostic. My first fix — splitting it into `filepath.Join("/", "sys", "fs", "cgroup", cgroupName)` — still failed CI because `"/"` itself contains a separator. This took three commits to resolve.
+
+**How I resolved it:**
+Defined a package-level constant `cgroupBase = "/sys/fs/cgroup/"` and constructed the path via simple string concatenation: `cgroupPath = cgroupBase + cgroupName`. Since the constant is not a literal argument to `filepath.Join`, gocritic has no objection. This also avoids the overhead of `filepath.Join` for what is always a fixed-prefix + sanitized-suffix path.
+
+**What I learned:**
+Static analysis rules about `filepath.Join` are stricter than they look — *any* argument containing `/` triggers the diagnostic, not just multi-segment arguments. When the base path is truly constant (like a kernel pseudo-filesystem mount point), a string constant + concatenation is both cleaner and lint-safe compared to trying to decompose the path into individual segments.
+
+## May 30, 2026 - paramTypeCombine and errcheck lint failures in CI after security hardening
+
+**What I was trying to do:**
+Push the seccomp policy, cgroup integration, and rlimit hardening changes. Expected CI to pass since `go build` and `go vet` passed locally.
+
+**What went wrong:**
+CI ran `golangci-lint` with stricter rules than local `go vet`. Three categories of failures:
+1. `paramTypeCombine` (gocritic): `func f(a string, b string)` should be `func f(a, b string)` — flagged on both `buildNsjailRunArgs` and `buildNsjailBuildArgs`.
+2. `errcheck`: `os.ReadDir` return value was discarded with `_` instead of being properly checked.
+3. `filepathJoin`: as described above.
+
+**How I resolved it:**
+Combined consecutive same-type parameters in function signatures (`langID, cgroupName string`), replaced `entries, _ := os.ReadDir(...)` with `entries, err := os.ReadDir(...); err == nil`, and used the `cgroupBase` constant approach for the path. Each fix was a separate commit to keep the history clean.
+
+**What I learned:**
+Local `go build && go vet` passes a much lower bar than `golangci-lint` with gocritic enabled. Always run the full linter locally before pushing if CI uses it. The three-commit cycle could have been a single commit if I had run `golangci-lint` before the first push.
+
+## May 30, 2026 - rangeValCopy lint in health.go copying Language struct in range loop
+
+**What I was trying to do:**
+Fix CI lint failures across the codebase. The `health.go` file's `Info` handler iterated over `h.cfg.Languages` and assigned each value to a local variable `lang := h.cfg.Languages[id]`.
+
+**What went wrong:**
+The `Language` struct contains slices (allowlists, args), making it expensive to copy. The `govet`/`rangeValCopy` linter flagged `lang := h.cfg.Languages[id]` because it copies the entire struct into a stack variable on each iteration. Under high request rates to `/info`, this creates unnecessary GC pressure.
+
+**How I resolved it:**
+Replaced all usages of the local `lang` variable with direct map accesses: `h.cfg.Languages[id].Name`, `h.cfg.Languages[id].Run.Limits.WallTimeS`, etc. This avoids the copy entirely — the map value is read in place without allocating a stack copy.
+
+**What I learned:**
+When iterating over maps of structs that contain slices or other heap-allocated fields, avoid copying the value into a local variable unless you actually need a snapshot. Direct field access through the map is both allocation-free and lint-clean.
+

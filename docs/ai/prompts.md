@@ -171,3 +171,36 @@ Add a comment at the top explaining that adding a new language = one YAML block
 **Not Used**:
 - Bypassing nsjail entirely (maintained strict sandbox requirements).
 - Changing the overall architecture of how requests were submitted (the fix was entirely isolated to `runner.go`).
+
+## 30-05-26 - Security Hardening
+**Prompt**: " 1. Add Seccomp Kafel Policy (Security — 15%) [...] 2. Per-request cgroupv2 with memory_peak_kb reporting [...] 3. Enhanced memory_exceeded detection [...] 4. Fix CI lint [...] 5. --cgroup_mem_swap_max 0 [...] 6. Hardening (--rlimit_core, --rlimit_stack, --rlimit_fsize) [...] 7. Dockerfile smoke tests [...] 8. Environment variable whitelisting. Focus on closing the gap, and commit and push to git after every fix."
+
+**Response Summary**: The agent created an implementation plan covering all 8 items, then executed them sequentially. The seccomp policy was defined as a `const seccompPolicy` Kafel string blocking 28 syscalls and injected via `--seccomp_string` to both build and run nsjail argument builders. cgroupv2 integration added per-request cgroup directory creation, nsjail flags (`--cgroup_mem_parent`, `--detect_cgroupv2`, `--cgroupv2_mount`), and post-execution reading of `memory.peak`. Memory detection was refactored from fragile exit-code checks to a multi-pattern parser. Rlimits, swap disable, env whitelisting, Dockerfile smoke tests, and lint fixes were batched into the same execution run. Each item was committed and pushed individually.
+
+**What I used / didn't use**:
+**Used**:
+- Deep analysis of the codebase as the driving prompt to prioritize work by judging-impact score
+- Sequential commit-per-fix strategy for clean git history and easy rollback
+- Implementation plan artifact to get user approval before execution
+- `go build && go vet` as a fast local gate before each push
+
+**Not Used**:
+- Seccomp allowlist approach (too fragile for diverse compilers)
+- Sampling-based memory tracking (kernel `memory.peak` is authoritative)
+- Bulk commit of all changes (individual commits preferred for traceability)
+
+## 30-05-26 - README Rewrite
+**Prompt**: "generate a better readme, keep it informative and to the point with our emojies or fancy stuff, highlight the important differentiating points naturally"
+
+**Response Summary**: Rewrote README.md from 1,789 words (emoji-heavy, marketing-style) to ~500 words with five sections: Isolation model, Languages, API, Quick start, Documentation. Security differentiators (seccomp, cgroupv2, env allowlist) were presented as natural technical facts in the Isolation model section rather than as marketing bullet points. A follow-up prompt added a detailed Security section with tables for rlimits and input validation attack surfaces.
+
+**What I used / didn't use**:
+**Used**:
+- Factual prose style over bullet-point marketing
+- Working curl example with realistic response including `memory_peak_kb`
+- Tables for structured information (rlimits, attack surfaces)
+
+**Not Used**:
+- Emoji or decorative badges beyond the standard license/Go/Docker shields
+- Troubleshooting, FAQ, or contributing sections (moved to docs/)
+- The word "robust"
