@@ -53,6 +53,11 @@
 
 ## Analysis
 
+### Key Takeaways
+- **Server returned zero 429s at Python c=100.**
+- **C++ c=100 timeouts are client-side (hey's 20s), not server rejections.**
+- **Queue absorbed load cleanly** across all tests, buffering requests instead of dropping them.
+
 ### Python 3
 
 Zero errors across all 800 requests. The semaphore queue absorbs load cleanly at every
