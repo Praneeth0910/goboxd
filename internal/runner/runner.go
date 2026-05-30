@@ -143,7 +143,7 @@ func nsjailAvailable() bool {
 // buildNsjailRunArgs constructs nsjail args for the RUN phase.
 // --chroot is set to jailDir, so all paths inside the jail are jail-relative.
 // E.g. source file at jailDir/solution.py is accessed as /solution.py inside the jail.
-func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string, langID string, cgroupName string) []string {
+func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string, langID, cgroupName string) []string {
 	wallTimeS := limits.WallTimeS
 	if wallTimeS <= 0 {
 		wallTimeS = 10
@@ -216,7 +216,7 @@ func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string
 // The chroot is set to / (host root) with a writable bind-mount of jailDir
 // so the compiler can write the artifact directly into jailDir using absolute paths.
 // PATH is injected so collect2/ld can be found by g++.
-func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string, langID string, cgroupName string) []string {
+func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd string, cmdArgs []string, langID, cgroupName string) []string {
 	wallTimeS := limits.WallTimeS
 	if wallTimeS <= 0 {
 		wallTimeS = 30
@@ -348,11 +348,11 @@ func runCommand(
 		var cgroupName string
 		// Create cgroup directory for memory.peak tracking
 		cgroupName = fmt.Sprintf("goboxd-%d", time.Now().UnixNano())
-		cgroupPath = filepath.Join("/sys/fs/cgroup", cgroupName)
+		cgroupPath = filepath.Join("/", "sys", "fs", "cgroup", cgroupName)
 		if err := os.Mkdir(cgroupPath, 0o755); err == nil {
 			defer func() {
 				// remove child cgroups nsjail created first
-				if entries, _ := os.ReadDir(cgroupPath); entries != nil {
+				if entries, err := os.ReadDir(cgroupPath); err == nil {
 					for _, e := range entries {
 						if e.IsDir() {
 							os.Remove(filepath.Join(cgroupPath, e.Name()))
