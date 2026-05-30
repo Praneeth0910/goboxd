@@ -57,8 +57,14 @@ func NewJailDir(baseDir string) (path string, cleanup func(), err error) {
 // path does not escape the base directory. It serves as a defense-in-depth mechanism.
 func SafeJoin(base, name string) (string, error) {
 	joined := filepath.Join(base, filepath.Base(name))
-	absBase, _ := filepath.Abs(base)
-	absJoined, _ := filepath.Abs(joined)
+	absBase, err := filepath.Abs(base)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve base path: %w", err)
+	}
+	absJoined, err := filepath.Abs(joined)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve joined path: %w", err)
+	}
 	if !strings.HasPrefix(absJoined, absBase+string(filepath.Separator)) {
 		return "", fmt.Errorf("path %q escapes sandbox", name)
 	}
