@@ -13,7 +13,8 @@ func TestNewRunHandlerSemaphore(t *testing.T) {
 	st := &stats.Stats{}
 	sem := make(chan struct{}, 1)
 
-	h := NewRunHandler(cfg, st, sem)
+	deps := Deps{Config: cfg, Stats: st, Semaphore: sem}
+	h := NewRunHandler(deps)
 	if h.sem != sem {
 		t.Errorf("expected semaphore to be assigned correctly")
 	}

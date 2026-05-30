@@ -48,15 +48,15 @@ type HealthHandler struct {
 	st  *stats.Stats
 }
 
-// NewHealthHandler creates a new HealthHandler with the given probe results.
-func NewHealthHandler(version, commit string, nsjail runner.ProbeResult, langs map[string]runner.ProbeResult, cfg *config.Config, st *stats.Stats) *HealthHandler {
+// NewHealthHandler creates a new HealthHandler with the given dependencies.
+func NewHealthHandler(deps Deps) *HealthHandler {
 	h := &HealthHandler{
-		buildVersion: version,
-		buildCommit:  commit,
-		nsjailProbe:  nsjail,
-		langProbes:   langs,
-		cfg:          cfg,
-		st:           st,
+		buildVersion: deps.Version,
+		buildCommit:  deps.Commit,
+		nsjailProbe:  deps.NsjailProbe,
+		langProbes:   deps.LangProbes,
+		cfg:          deps.Config,
+		st:           deps.Stats,
 	}
 
 	go h.startBackgroundProbes()

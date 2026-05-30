@@ -96,9 +96,9 @@ type RunHandler struct {
 	sem chan struct{} // concurrency semaphore
 }
 
-// NewRunHandler creates a RunHandler with the provided concurrency semaphore.
-func NewRunHandler(cfg *config.Config, st *stats.Stats, sem chan struct{}) *RunHandler {
-	return &RunHandler{cfg: cfg, st: st, sem: sem}
+// NewRunHandler creates a RunHandler from the injected dependencies.
+func NewRunHandler(deps Deps) *RunHandler {
+	return &RunHandler{cfg: deps.Config, st: deps.Stats, sem: deps.Semaphore}
 }
 
 // ---------------------------------------------------------------------------

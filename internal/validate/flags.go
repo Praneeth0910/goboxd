@@ -14,7 +14,13 @@ func ValidateFlags(flags, allowlist []string) error {
 		return nil
 	}
 	if len(allowlist) == 0 {
-		return fmt.Errorf("flags are not allowed for this language: %q", flags[0])
+		if len(flags) == 0 {
+			return nil
+		}
+		return ValidationError{
+			Code:    "invalid_flags",
+			Message: fmt.Sprintf("no flags allowed, but received %d flag(s)", len(flags)),
+		}
 	}
 
 	// Check each flag against the allowlist

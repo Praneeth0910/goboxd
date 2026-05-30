@@ -90,8 +90,19 @@ func main() {
 		langCfg := cfg.Languages[langID]
 		langProbes[langID] = runner.ProbeLanguage(langCfg)
 	}
-	healthHandler := handler.NewHealthHandler(version, commit, nsjailProbe, langProbes, cfg, st)
-	runHandler := handler.NewRunHandler(cfg, st, sem)
+	// Inject dependencies into handlers via Deps
+	deps := handler.Deps{
+		Config:      cfg,
+		Stats:       st,
+		Semaphore:   sem,
+		Version:     version,
+		Commit:      commit,
+		NsjailProbe: nsjailProbe,
+		LangProbes:  langProbes,
+	}
+
+	healthHandler := handler.NewHealthHandler(deps)
+	runHandler := handler.NewRunHandler(deps)
 
 	// Setup router with structured logging and recovery
 	r := chi.NewRouter()
