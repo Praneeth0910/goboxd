@@ -181,6 +181,55 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 6.5 Validate limits
+	if req.Build != nil && req.Build.Limits != nil {
+		if lang.Build == nil {
+			writeError(w, "invalid_limits", fmt.Sprintf("language %q does not support build limits", req.Language))
+			return
+		}
+		buildLimits := lang.Build.Limits
+		if buildLimits.WallTimeS <= 0 {
+			buildLimits.WallTimeS = 30
+		}
+		if buildLimits.MemoryKB <= 0 {
+			buildLimits.MemoryKB = 1024 * 1024
+		}
+		if buildLimits.MaxProcesses <= 0 {
+			buildLimits.MaxProcesses = 100
+		}
+		override := config.ResourceLimits{
+			WallTimeS:    req.Build.Limits.WallTimeS,
+			MemoryKB:     req.Build.Limits.MemoryKB,
+			MaxProcesses: req.Build.Limits.MaxProcesses,
+		}
+		if _, err := buildLimits.MergeWithCap(override); err != nil {
+			writeError(w, "invalid_limits", fmt.Sprintf("build limits: %v", err))
+			return
+		}
+	}
+
+	if req.Run != nil && req.Run.Limits != nil {
+		runLimits := lang.Run.Limits
+		if runLimits.WallTimeS <= 0 {
+			runLimits.WallTimeS = 10
+		}
+		if runLimits.MemoryKB <= 0 {
+			runLimits.MemoryKB = 256 * 1024
+		}
+		if runLimits.MaxProcesses <= 0 {
+			runLimits.MaxProcesses = 64
+		}
+		override := config.ResourceLimits{
+			WallTimeS:    req.Run.Limits.WallTimeS,
+			MemoryKB:     req.Run.Limits.MemoryKB,
+			MaxProcesses: req.Run.Limits.MaxProcesses,
+		}
+		if _, err := runLimits.MergeWithCap(override); err != nil {
+			writeError(w, "invalid_limits", fmt.Sprintf("run limits: %v", err))
+			return
+		}
+	}
+
 	// 7. Validate test count
 	if len(req.Tests) < 1 || len(req.Tests) > h.cfg.MaxTests {
 		writeError(w, "invalid_test_count", fmt.Sprintf("test count must be between 1 and %d", h.cfg.MaxTests))

@@ -3,8 +3,6 @@ package runner
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -14,7 +12,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -23,18 +20,7 @@ import (
 	"github.com/thesouldev/goboxd/internal/status"
 )
 
-var jobCounter atomic.Int64
 
-// GenerateJobID creates a unique job identifier.
-// Format: {counter}-{randomHex} — never reuses an ID.
-func GenerateJobID() string {
-	count := jobCounter.Add(1)
-	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		slog.Error("failed to generate random bytes for job ID", "error", err)
-	}
-	return fmt.Sprintf("%d-%s-%d", count, hex.EncodeToString(b), os.Getpid())
-}
 
 // ---------------------------------------------------------------------------
 // Request / Response types owned by the runner layer
@@ -621,7 +607,7 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 			buildLimits.WallTimeS = 30 // generous default for compilation
 		}
 		if req.Build != nil {
-			buildLimits = buildLimits.MergeWithCap(req.Build.Limits)
+			buildLimits, _ = buildLimits.MergeWithCap(req.Build.Limits)
 		}
 
 		// Add 2s buffer so nsjail's internal --time_limit fires first and cleans up gracefully
@@ -710,7 +696,7 @@ func runTestCase(
 	if runLimits.WallTimeS <= 0 {
 		runLimits.WallTimeS = 10
 	}
-	runLimits = runLimits.MergeWithCap(req.Run.Limits)
+	runLimits, _ = runLimits.MergeWithCap(req.Run.Limits)
 
 	// Add 2s buffer so nsjail's internal --time_limit fires first and cleans up gracefully
 	ctx, cancel := context.WithTimeout(context.Background(),

@@ -10,16 +10,7 @@ import (
 	"github.com/thesouldev/goboxd/internal/sandbox"
 )
 
-func TestGenerateJobID(t *testing.T) {
-	a := GenerateJobID()
-	b := GenerateJobID()
-	if a == b {
-		t.Fatal("GenerateJobID returned duplicate IDs")
-	}
-	if a == "" || b == "" {
-		t.Fatal("GenerateJobID returned empty string")
-	}
-}
+
 
 // TestCapReaderBoundsOutput verifies that CapReader correctly limits child process output
 // to prevent OOM attacks from runaway programs writing gigabytes of data.

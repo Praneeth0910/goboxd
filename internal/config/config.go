@@ -23,18 +23,27 @@ type ResourceLimits struct {
 	MaxProcesses int `yaml:"max_processes"`
 }
 
-func (l ResourceLimits) MergeWithCap(override ResourceLimits) ResourceLimits {
+func (l ResourceLimits) MergeWithCap(override ResourceLimits) (ResourceLimits, error) {
 	out := l // start from language defaults
-	if override.WallTimeS > 0 && override.WallTimeS < l.WallTimeS {
+	if override.WallTimeS > 0 {
+		if l.WallTimeS > 0 && override.WallTimeS > l.WallTimeS {
+			return out, fmt.Errorf("requested wall_time_s (%d) exceeds maximum allowed (%d)", override.WallTimeS, l.WallTimeS)
+		}
 		out.WallTimeS = override.WallTimeS
 	}
-	if override.MemoryKB > 0 && override.MemoryKB < l.MemoryKB {
+	if override.MemoryKB > 0 {
+		if l.MemoryKB > 0 && override.MemoryKB > l.MemoryKB {
+			return out, fmt.Errorf("requested memory_kb (%d) exceeds maximum allowed (%d)", override.MemoryKB, l.MemoryKB)
+		}
 		out.MemoryKB = override.MemoryKB
 	}
-	if override.MaxProcesses > 0 && override.MaxProcesses < l.MaxProcesses {
+	if override.MaxProcesses > 0 {
+		if l.MaxProcesses > 0 && override.MaxProcesses > l.MaxProcesses {
+			return out, fmt.Errorf("requested max_processes (%d) exceeds maximum allowed (%d)", override.MaxProcesses, l.MaxProcesses)
+		}
 		out.MaxProcesses = override.MaxProcesses
 	}
-	return out
+	return out, nil
 }
 
 // BuildConfig defines how to compile source code
