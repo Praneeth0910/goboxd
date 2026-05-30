@@ -56,5 +56,19 @@ RUN mkdir -p /tmp/goboxd && chmod 1777 /tmp/goboxd
 ENV NSJAIL_PATH=/usr/sbin/nsjail
 ENV LANGUAGES_CONFIG=/etc/goboxd/languages.yaml
 
+# Smoke-test every language toolchain at build time
+RUN python3 --version \
+    && node --version \
+    && gcc --version \
+    && g++ --version \
+    && java -version \
+    && javac -version \
+    && iverilog -V \
+    && bash --version \
+    && ruby --version \
+    && rustc --version \
+    && kotlinc -version \
+    && go version
+
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/goboxd", "--config", "/etc/goboxd/languages.yaml"]
