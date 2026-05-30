@@ -91,7 +91,8 @@ goboxd is a stateless HTTP service that receives untrusted source code, compiles
 4. Runner creates a unique jail directory under `/tmp/goboxd/`
 5. Runner writes the source code to the jail directory
 6. **Build phase** (compiled languages only): nsjail executes the compiler with bind-mounted paths and `PATH` injection
-7. **Run phase** (per test case): nsjail executes the program with stdin piped and stdout/stderr captured
+7. **Run phase** *(per test case)*: nsjail executes the program with stdin piped; seccomp enforces syscall policy; cgroupv2 tracks peak memory
+8. Runner reads `memory.peak` from the per-request cgroup slice to populate `memory_peak_kb`
 8. Runner compares actual vs expected output and assigns per-test statuses
 9. Runner computes the top-level status and returns the result
 10. Handler serializes the response as JSON (always HTTP 200 for execution results)
@@ -107,8 +108,13 @@ Each execution runs inside an nsjail sandbox with:
 - Separate PID, mount, UTS, IPC, and network namespaces
 - Read-only bind mounts for system libraries
 - Writable tmpfs for the working directory
-- Strict resource limits (wall time, memory, max processes)
-- No network access (CLONE_NEWNET)
+- Strict resource limits (wall time, memory, max processes, file size, stack size)
+- Core dumps disabled (`--rlimit_core 0`)
+- Swap disabled (`--cgroup_mem_swap_max 0`)
+- No network access (`CLONE_NEWNET`)
+- **Seccomp Kafel policy** blocking 28 dangerous syscalls (e.g. `ptrace`, `bpf`, `mount`, `kexec_load`, `unshare`)
+- **Per-request cgroupv2 slice** for precise `memory_peak_kb` reporting via `memory.peak`
+- **Environment whitelist**: only `HOME`, `TMP`, `TMPDIR`, and `PATH` are passed into the sandbox
 
 ---
 

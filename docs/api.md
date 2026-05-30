@@ -188,13 +188,16 @@ All execution results (including failures) return 200. User code errors never ca
       "status": "accepted",
       "stdout": "10\n",
       "stderr": "",
-      "duration_ms": 18
+      "duration_ms": 18,
+      "memory_peak_kb": 2048
     }
   ]
 }
 ```
 
 The `build` field is only present for compiled languages.
+
+The `memory_peak_kb` field in each test result reports the peak resident memory (in KiB) read from the cgroupv2 `memory.peak` file after the sandbox exits. It is `0` when cgroupv2 is unavailable or the cgroup could not be created.
 
 **Status Values**
 
@@ -204,8 +207,8 @@ The `build` field is only present for compiled languages.
 | `wrong_output`               | Output differs from expected (non-whitespace diff) |
 | `output_whitespace_mismatch` | Output differs only in whitespace                  |
 | `runtime_error`              | Non-zero exit code                                 |
-| `time_exceeded`              | Execution exceeded wall time limit                 |
-| `memory_exceeded`            | Process killed by OOM                              |
+| `time_exceeded`              | Execution exceeded wall time limit, or killed by SIGXCPU |
+| `memory_exceeded`            | Process killed by OOM or cgroup memory limit       |
 | `build_failed`               | Compilation failed                                 |
 | `not_executed`               | Test was skipped (e.g., build failed)              |
 | `internal_error`             | Server-side error (should not occur)               |

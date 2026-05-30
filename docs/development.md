@@ -183,11 +183,12 @@ HTTP Request
 3. Handler acquires a concurrency semaphore slot (blocks if all slots are busy).
 4. Runner creates a unique jail directory under `/tmp/goboxd/`.
 5. Runner writes the source code safely (symlink-safe, `O_EXCL | O_NOFOLLOW`).
-6. **Build phase** *(compiled languages only)*: nsjail executes the compiler.
-7. **Run phase** *(per test case)*: nsjail executes the program with piped stdin.
-8. Runner compares actual vs expected output and assigns statuses.
-9. Handler serializes the result as JSON (always HTTP 200 for execution results).
-10. Jail directory is cleaned up.
+6. **Build phase** *(compiled languages only)*: nsjail executes the compiler inside a seccomp-filtered sandbox.
+7. **Run phase** *(per test case)*: nsjail executes the program with piped stdin; a per-request cgroupv2 slice tracks memory usage.
+8. Runner reads `memory.peak` from the cgroup slice and populates `memory_peak_kb`.
+9. Runner compares actual vs expected output and assigns statuses.
+10. Handler serializes the result as JSON (always HTTP 200 for execution results).
+11. Jail directory and cgroup slice are cleaned up.
 
 ### Key design decisions
 
@@ -334,7 +335,7 @@ rust:
 
 ### Step 2: Install the runtime in `Dockerfile`
 
-Add the package to the `apt-get install` line in the runtime stage:
+Add the package to the `apt-get install` line in the runtime stage, and add a `--version` check to the smoke-test `RUN` step:
 
 ```dockerfile
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -344,6 +345,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     your-new-language \       # <-- Add here
     libnl-route-3-200 libprotobuf32t64 \
     && rm -rf /var/lib/apt/lists/*
+
+# Add to the smoke-test layer:
+RUN your-new-language --version
 ```
 
 ### Step 3: Rebuild and verify
@@ -589,8 +593,10 @@ When contributing, keep these security invariants in mind:
 2. **Validate all user input** — filenames, flags, source code size, test count.
 3. **Follow symlinks safely** — use `O_NOFOLLOW` when writing to jail directories.
 4. **Cap all output** — use `CapReader` to prevent memory exhaustion from child processes.
-5. **Enforce resource limits** — every sandbox execution has wall time, memory, and process limits.
+5. **Enforce resource limits** — every sandbox execution has wall time, memory, process, stack, and file-size limits.
 6. **Allowlist, not blocklist** — compiler flags use strict allowlists.
+7. **Block dangerous syscalls** — all nsjail invocations use a Kafel seccomp policy denying 28 kernel-level escape vectors.
+8. **Whitelist the environment** — only `HOME`, `TMP`, `TMPDIR`, and `PATH` are injected; no host env leakage.
 
 See [security.md](security.md) for the full security audit and threat model.
 
