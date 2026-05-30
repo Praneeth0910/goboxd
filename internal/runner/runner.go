@@ -440,7 +440,10 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 	if sourceFilename == "" {
 		sourceFilename = "solution"
 	}
-	sourcePath := filepath.Join(jailDir, sourceFilename)
+	sourcePath, err := sandbox.SafeJoin(jailDir, sourceFilename)
+	if err != nil {
+		return RunResult{Status: status.StatusInternalError}, fmt.Errorf("failed to resolve source path safely: %w", err)
+	}
 	// Safely open the file to prevent TOCTOU symlink attacks
 	f, err := os.OpenFile(sourcePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0o644)
 	if err != nil {
