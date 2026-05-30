@@ -494,8 +494,8 @@ func RunSandbox(lang config.Language, req RunRequest) (RunResult, error) {
 		if buildLimits.WallTimeS <= 0 {
 			buildLimits.WallTimeS = 30 // generous default for compilation
 		}
-		if req.Build != nil && req.Build.Limits.WallTimeS > 0 {
-			buildLimits.WallTimeS = req.Build.Limits.WallTimeS
+		if req.Build != nil {
+			buildLimits = buildLimits.MergeWithCap(req.Build.Limits)
 		}
 
 		// Add 2s buffer so nsjail's internal --time_limit fires first and cleans up gracefully
@@ -584,9 +584,7 @@ func runTestCase(
 	if runLimits.WallTimeS <= 0 {
 		runLimits.WallTimeS = 10
 	}
-	if req.Run.Limits.WallTimeS > 0 {
-		runLimits.WallTimeS = req.Run.Limits.WallTimeS
-	}
+	runLimits = runLimits.MergeWithCap(req.Run.Limits)
 
 	// Add 2s buffer so nsjail's internal --time_limit fires first and cleans up gracefully
 	ctx, cancel := context.WithTimeout(context.Background(),

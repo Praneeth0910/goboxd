@@ -23,6 +23,20 @@ type ResourceLimits struct {
 	MaxProcesses int `yaml:"max_processes"`
 }
 
+func (l ResourceLimits) MergeWithCap(override ResourceLimits) ResourceLimits {
+	out := l // start from language defaults
+	if override.WallTimeS > 0 && override.WallTimeS < l.WallTimeS {
+		out.WallTimeS = override.WallTimeS
+	}
+	if override.MemoryKB > 0 && override.MemoryKB < l.MemoryKB {
+		out.MemoryKB = override.MemoryKB
+	}
+	if override.MaxProcesses > 0 && override.MaxProcesses < l.MaxProcesses {
+		out.MaxProcesses = override.MaxProcesses
+	}
+	return out
+}
+
 // BuildConfig defines how to compile source code
 type BuildConfig struct {
 	Cmd           string         `yaml:"cmd"`
