@@ -91,6 +91,40 @@ type RunResult struct {
 // nsjail helpers
 // ---------------------------------------------------------------------------
 
+const seccompPolicy = `POLICY goboxd_safe {
+    KILL_PROCESS {
+        ptrace,
+        process_vm_readv,
+        process_vm_writev,
+        init_module,
+        finit_module,
+        delete_module,
+        kexec_load,
+        reboot,
+        settimeofday,
+        adjtimex,
+        clock_adjtime,
+        mknodat,
+        chroot,
+        pivot_root,
+        unshare,
+        setns,
+        userfaultfd,
+        name_to_handle_at,
+        open_by_handle_at,
+        acct,
+        bpf,
+        syslog,
+        add_key,
+        request_key,
+        keyctl,
+        fanotify_init,
+        capset,
+        mount
+    }
+}
+USE goboxd_safe DEFAULT ALLOW`
+
 // nsjailPath returns the resolved path to the nsjail binary.
 // It falls back to /usr/sbin/nsjail when NSJAIL_PATH is not set.
 func nsjailPath() string {
@@ -155,6 +189,7 @@ func buildNsjailRunArgs(jailDir string, limits config.ResourceLimits, cmd string
 
 	args = append(args,
 		"--env", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"--seccomp_string", seccompPolicy,
 		"--chroot", jailDir,
 		"--",
 		cmd,
@@ -207,6 +242,7 @@ func buildNsjailBuildArgs(jailDir string, limits config.ResourceLimits, cmd stri
 		// rw bind-mount so compiler can write the output artifact
 		"--bindmount", jailDir + ":" + jailDir,
 		"--env", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"--seccomp_string", seccompPolicy,
 		"--chroot", "/",
 		"--cwd", jailDir,
 		"--",

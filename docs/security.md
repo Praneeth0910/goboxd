@@ -213,6 +213,31 @@ func (l ResourceLimits) MergeWithCap(override ResourceLimits) ResourceLimits {
 
 ---
 
+## 11. Seccomp syscall filtering
+
+**Risk**: The default nsjail sandbox provides isolation via namespaces, but the Linux kernel still exposes hundreds of syscalls. Some of these, like `ptrace`, `bpf`, `mount`, or `unshare`, can be exploited by advanced sandbox escapes if left unblocked.
+**Location**: `internal/runner/runner.go`
+**Fix**: `internal/runner/runner.go` — `buildNsjailRunArgs` and `buildNsjailBuildArgs`:
+- Implements a strict `seccomp` Kafel policy blocking 28 dangerous syscalls.
+- This applies a kernel-level filter using BPF to kill any sandbox process that attempts an unauthorized syscall.
+
+```go
+const seccompPolicy = `POLICY goboxd_safe {
+    KILL_PROCESS {
+        ptrace, process_vm_readv, process_vm_writev,
+        init_module, finit_module, delete_module,
+        kexec_load, reboot, settimeofday, adjtimex, clock_adjtime,
+        mknodat, chroot, pivot_root, unshare, setns,
+        userfaultfd, name_to_handle_at, open_by_handle_at,
+        acct, bpf, syslog, add_key, request_key, keyctl,
+        fanotify_init, capset, mount
+    }
+}
+USE goboxd_safe DEFAULT ALLOW`
+```
+
+---
+
 ## Further Reading
 
 - [Getting Started](getting-started.md) — Setup guide for beginners
