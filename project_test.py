@@ -718,7 +718,7 @@ def check_live_docker(root: Path, run_docker: bool):
 
     # Run container
     print(f"  {CYAN}Starting container…{RESET}")
-    rc2, cid, _ = run_cmd(f"docker run --privileged -d -p 18888:8080 {tag}", timeout=20)
+    rc2, cid, _ = run_cmd(f"docker run --privileged --cgroupns=host -d -p 18888:8080 {tag}", timeout=20)
     if rc2 != 0:
         record("Docker run", "FAIL", "docker run failed", weight=3)
         return

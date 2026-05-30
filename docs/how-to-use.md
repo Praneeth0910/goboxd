@@ -56,6 +56,7 @@ Now, let's start the sandbox server using Docker. Open your terminal and run the
 
 ```bash
 docker run -d \
+  --cgroupns=host \
   --privileged \
   --name goboxd-service \
   -p 8080:8080 \
@@ -263,7 +264,7 @@ docker stop goboxd-service && docker rm goboxd-service
 > This means another service on your host machine is already using port 8080. 
 > To resolve this, map the container to a different local port (e.g., `8085`):
 > ```bash
-> docker run -d --privileged --name goboxd-service -p 8085:8080 goboxd:latest
+> docker run -d --privileged --cgroupns=host --name goboxd-service -p 8085:8080 goboxd:latest
 > ```
 > Then, make your curl requests to `http://localhost:8085/run`.
 

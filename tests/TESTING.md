@@ -8,7 +8,7 @@ Start the service in one terminal:
 
 ```bash
 make run
-# or: docker run -p 8080:8080 goboxd:latest
+# or: docker run --privileged --cgroupns=host -p 8080:8080 goboxd:latest
 ```
 
 The service will listen on `http://localhost:8080`

@@ -47,6 +47,7 @@ integration: build
 		--name $(CONTAINER_NAME) \
 		-p 18080:8080 \
 		--privileged \
+		--cgroupns=host \
 		--rm \
 		$(GOBOXD_IMAGE) > /dev/null
 	@echo "Waiting for container to be ready..."

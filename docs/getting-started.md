@@ -115,6 +115,7 @@ docker compose up -d
 
 ```bash
 docker run -d \
+  --cgroupns=host \
   --privileged \
   --name goboxd \
   -p 8080:8080 \
@@ -382,7 +383,7 @@ Error: Port 8080 is already allocated
 **Fix:** Use a different port:
 
 ```bash
-docker run -d --privileged --name goboxd -p 9090:8080 goboxd:latest
+docker run -d --privileged --cgroupns=host --name goboxd -p 9090:8080 goboxd:latest
 ```
 
 Then make requests to `http://localhost:9090` instead.

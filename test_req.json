@@ -1,0 +1,10 @@
+{
+  "language": "py3",
+  "source": "print(input().strip() + ' world')",
+  "tests": [
+    {
+      "stdin": "hello\n",
+      "expected_stdout": "hello world\n"
+    }
+  ]
+}

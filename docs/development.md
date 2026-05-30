@@ -619,7 +619,7 @@ docker logs goboxd 2>&1 | jq 'select(.path == "/run")'
 ### Run the container interactively
 
 ```bash
-docker run -it --privileged --rm goboxd:latest /bin/bash
+docker run -it --privileged --cgroupns=host --rm goboxd:latest /bin/bash
 ```
 
 This drops you into a shell inside the container where you can:
