@@ -45,7 +45,7 @@ If any command is not found, install that tool before continuing.
 ## Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/Praneeth0910/goboxd.git
+git clone https://github.com/Praneeth0910/goboxd.git -b team/sudo
 cd goboxd
 ```
 
@@ -296,7 +296,7 @@ You will see:
 - A **Run** button (or press `Ctrl+Enter`) to execute your code.
 
 > [!TIP]
-> The web UI communicates with the API at `http://localhost:8080`. If your API is on a different port, you may need to modify the `API_URL` constant in `docs/demo/index.html`.
+> The web UI communicates with the API at `http://localhost:8080`. If your API is on a different port, change the server URL using the input field at the top of the page.
 
 ---
 
@@ -424,7 +424,7 @@ The first build compiles nsjail from source and installs multiple language runti
 
 ## Next Steps
 
-- 📖 Read the [API Reference](api.md) for all endpoints and request/response formats.
-- 🏗️ Read the [Architecture Guide](architecture.md) to understand how the sandbox works internally.
-- 🔒 Read the [Security Audit](security.md) to learn about the threat model and mitigations.
-- 🛠️ Read the [Development Guide](development.md) to contribute to goboxd.
+- [API Reference](api.md) — all endpoints and request/response formats
+- [Architecture Guide](architecture.md) — how the sandbox works internally
+- [Security Audit](security.md) — threat model and mitigations
+- [Development Guide](development.md) — contributing to goboxd
