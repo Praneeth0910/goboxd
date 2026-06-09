@@ -11,5 +11,7 @@ contextmedia_Alagents/
 tmp/
 tests/
 scripts/
+# Allow lang_install scripts into Docker build context
 !scripts/lang_install/
+!scripts/lang_install/**
 external/
