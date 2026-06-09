@@ -140,3 +140,68 @@ done
 hey -n 200 -c 100 -t 60 -m POST -H "Content-Type: application/json" \
   -D /tmp/cpp_payload.json http://localhost:8080/run
 ```
+
+---
+
+## Stage 2 Update — 2026-06-09
+
+### Changes and Performance Impact
+
+The Stage 2 code changes have **no measurable impact** on the benchmark numbers above.
+
+| Fix | Performance impact |
+|---|---|
+| `CompareOutput` TrimSpace (FIX 1) | None — string comparison, nanoseconds |
+| `MaxBodyBytes` + source size check (FIX 2) | None — one `len()` call per request |
+| Artifact placeholder test (FIX 3) | None — test-only change |
+| Per-language Dockerfile scripts (FIX 4) | Build-time only, not runtime |
+| Lua language (FIX 5) | New language, does not affect existing |
+
+The concurrency semaphore, nsjail argument construction, jail directory creation,
+and sandbox execution path are all unchanged. The Stage 1 benchmark numbers remain valid
+for Stage 2.
+
+### Lua Benchmark (new language)
+
+Lua is interpreted (no build step), similar to Python 3. Expected performance:
+
+| Concurrency | Expected RPS | Expected p50 | Notes |
+|---|---|---|---|
+| 1 | ~25–30 | ~35ms | nsjail startup + lua5.4 interpreter |
+| 10 | ~50–60 | ~180ms | same as py3 profile |
+| 50 | ~55–60 | ~900ms | queue saturation |
+| 100 | ~55–60 | ~1700ms | stable, zero dropped |
+
+To benchmark Lua specifically:
+
+```bash
+cat > /tmp/lua_payload.json << 'EOF'
+{"language":"lua","source":"io.write(\"Hello, World!\\n\")","tests":[{"stdin":"","expected_stdout":"Hello, World!\n"}]}
+EOF
+
+for c in 1 10 50 100; do
+  hey -n 200 -c $c -m POST -H "Content-Type: application/json" \
+    -D /tmp/lua_payload.json http://localhost:8080/run
+  sleep 5
+done
+```
+
+### Source Size Limit Verification
+
+The `source_too_large` fix (FIX 2) adds one `len()` check per request. To verify:
+
+```bash
+# Exactly at limit (262144 bytes) — must return 200
+python3 -c "print('x'*262144)" | \
+  jq -Rn --arg src "$(cat)" \
+  '{"language":"py3","source":$src,"tests":[{"stdin":"","expected_stdout":""}]}' | \
+  curl -sf -X POST http://localhost:8080/run -H "Content-Type: application/json" -d @- | \
+  jq .status
+
+# One byte over limit (262145 bytes) — must return 400 source_too_large
+python3 -c "print('x'*262145)" | \
+  jq -Rn --arg src "$(cat)" \
+  '{"language":"py3","source":$src,"tests":[{"stdin":"","expected_stdout":""}]}' | \
+  curl -sf -X POST http://localhost:8080/run -H "Content-Type: application/json" -d @- | \
+  jq .error.code
+```
