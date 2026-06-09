@@ -15,11 +15,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Prefer auto model resolution
-        run: |
-          echo "COPILOT_AGENT_MODEL=auto" >> "$GITHUB_ENV"
-          echo "COPILOT_MODEL=auto" >> "$GITHUB_ENV"
-
       - name: Checkout code
         uses: actions/checkout@v5
 
