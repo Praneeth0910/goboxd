@@ -1,7 +1,7 @@
 # Adding a new language is simple:
 # 1. Add one YAML block under languages
-# 2. Add one install line in Dockerfile
-# 3. Zero Go code changes needed
+# 2. Add one shell script in scripts/lang_install/<id>.sh
+# 3. Zero Dockerfile changes needed. Zero Go code changes needed.
 
 languages:
   py3:

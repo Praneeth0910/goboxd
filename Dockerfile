@@ -27,16 +27,20 @@ RUN CGO_ENABLED=0 go build \
 # Stage 3: Runtime — trixie provides GLIBC 2.41 (nsjail requires >= 2.38)
 FROM debian:trixie-slim
 
-# Install only runtime dependencies actually needed by languages.yaml:
-#   - python3: for py3 language
-#   - g++: for cpp language (compile step)
-#   - libnl-route-3-200, libprotobuf32t64: nsjail runtime deps
+# Install nsjail runtime dependencies and base system tools.
+# Language toolchains are installed via per-language scripts below.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash ca-certificates \
-    python3 g++ gcc nodejs default-jdk iverilog \
-    rustc kotlin ruby \
     libnl-route-3-200 libprotobuf32t64 \
     && rm -rf /var/lib/apt/lists/*
+
+# Install language toolchains via per-language scripts.
+# Adding a new language = one .sh file in scripts/lang_install/ + one YAML block.
+# No Dockerfile change required.
+COPY scripts/lang_install/ /tmp/lang_install/
+RUN apt-get update \
+    && for f in /tmp/lang_install/*.sh; do echo "== $f =="; bash "$f" || exit 1; done \
+    && rm -rf /var/lib/apt/lists/* /tmp/lang_install
 
 # nsjail pinned at tag 3.4 — see .gitmodules
 COPY --from=nsjail-builder /nsjail/nsjail /usr/sbin/nsjail
