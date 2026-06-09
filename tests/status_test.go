@@ -133,10 +133,12 @@ func TestCompareOutput(t *testing.T) {
 			expectedStatus: status.StatusOutputWhitespaceMismatch,
 		},
 		{
+			// Internal whitespace differences are wrong_output per spec.
+			// Only leading/trailing whitespace differences are output_whitespace_mismatch.
 			name:           "multiple spaces between words",
 			actual:         "hello    world",
 			expected:       "hello world",
-			expectedStatus: status.StatusOutputWhitespaceMismatch,
+			expectedStatus: status.StatusWrongOutput,
 		},
 		{
 			name:           "tabs and spaces",
@@ -145,10 +147,12 @@ func TestCompareOutput(t *testing.T) {
 			expectedStatus: status.StatusOutputWhitespaceMismatch,
 		},
 		{
+			// Internal newline differences are wrong_output per spec.
+			// strings.TrimSpace only strips leading/trailing whitespace.
 			name:           "multiple newlines",
 			actual:         "hello\n\n\nworld\n",
 			expected:       "hello\nworld",
-			expectedStatus: status.StatusOutputWhitespaceMismatch,
+			expectedStatus: status.StatusWrongOutput,
 		},
 
 		// Wrong output cases
