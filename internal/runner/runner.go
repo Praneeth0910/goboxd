@@ -742,12 +742,8 @@ func runTestCase(
 		testStatus = status.StatusMemoryExceeded
 	case res.Error != nil:
 		testStatus = status.StatusRuntimeError
-	case strings.TrimRight(res.Stdout, "\r\n") == strings.TrimRight(tc.ExpectedStdout, "\r\n"):
-		testStatus = status.StatusAccepted
-	case strings.TrimSpace(res.Stdout) == strings.TrimSpace(tc.ExpectedStdout):
-		testStatus = status.StatusOutputWhitespaceMismatch
 	default:
-		testStatus = status.StatusWrongOutput
+		testStatus = status.CompareOutput(res.Stdout, tc.ExpectedStdout)
 	}
 
 	return TestResult{
