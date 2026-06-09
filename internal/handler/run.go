@@ -126,9 +126,8 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Wrap r.Body with http.MaxBytesReader BEFORE decoding
-	maxSourceBytes := int64(h.cfg.MaxSourceBytes)
-	r.Body = http.MaxBytesReader(w, r.Body, maxSourceBytes)
+	// 1. Wrap r.Body with http.MaxBytesReader BEFORE decoding (caps the entire HTTP body)
+	r.Body = http.MaxBytesReader(w, r.Body, int64(h.cfg.MaxBodyBytes))
 
 	// 2. Decode JSON
 	var req RunRequest
@@ -136,6 +135,13 @@ func (h *RunHandler) Run(w http.ResponseWriter, r *http.Request) {
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&req); err != nil {
 		writeError(w, "invalid_json", fmt.Sprintf("failed to decode request: %v", err))
+		return
+	}
+
+	// 2a. Check source size separately (distinct from body size)
+	if len(req.Source) > h.cfg.MaxSourceBytes {
+		writeError(w, "source_too_large",
+			fmt.Sprintf("source exceeds maximum size of %d bytes", h.cfg.MaxSourceBytes))
 		return
 	}
 

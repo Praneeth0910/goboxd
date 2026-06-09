@@ -238,6 +238,7 @@ languages:
         wall_time_s: 9
         memory_kb: 102400
         max_processes: 100
+max_body_bytes: 4194304
 max_source_bytes: 262144
 max_tests: 50
 max_concurrent: 0

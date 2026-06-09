@@ -77,6 +77,7 @@ type Language struct {
 // Config holds the application configuration
 type Config struct {
 	Languages      map[string]Language `yaml:"languages"` // keyed by language id
+	MaxBodyBytes   int                 `yaml:"max_body_bytes"`
 	MaxSourceBytes int                 `yaml:"max_source_bytes"`
 	MaxTests       int                 `yaml:"max_tests"`
 	MaxConcurrent  int                 `yaml:"max_concurrent"`
@@ -99,7 +100,8 @@ func Load(path string) (*Config, error) {
 	// Initialize Config with defaults
 	cfg := &Config{
 		Languages:      make(map[string]Language),
-		MaxSourceBytes: 262144, // 256 KiB
+		MaxBodyBytes:   4 * 1024 * 1024, // 4 MiB — whole HTTP body cap
+		MaxSourceBytes: 262144,          // 256 KiB — source field cap
 		MaxTests:       50,
 		MaxConcurrent:  0,  // use runtime.NumCPU()
 		QueueTimeoutS:  30, // 30 seconds default
@@ -124,6 +126,9 @@ func Load(path string) (*Config, error) {
 	}
 
 	// Parse global settings
+	if maxBodyBytes, ok := rawConfig["max_body_bytes"].(int); ok {
+		cfg.MaxBodyBytes = maxBodyBytes
+	}
 	if maxSourceBytes, ok := rawConfig["max_source_bytes"].(int); ok {
 		cfg.MaxSourceBytes = maxSourceBytes
 	}
@@ -135,6 +140,11 @@ func Load(path string) (*Config, error) {
 	}
 	if queueTimeoutS, ok := rawConfig["queue_timeout_s"].(int); ok {
 		cfg.QueueTimeoutS = queueTimeoutS
+	}
+
+	// Default-if-zero for fields that must be positive
+	if cfg.MaxBodyBytes <= 0 {
+		cfg.MaxBodyBytes = 4 * 1024 * 1024
 	}
 
 	// Set MaxConcurrent to NumCPU if not specified or 0
