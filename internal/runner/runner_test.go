@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/thesouldev/goboxd/internal/config"
 	"github.com/thesouldev/goboxd/internal/sandbox"
 )
 
@@ -118,5 +119,36 @@ func TestCapReaderWithDefaultMaxOutputBytes(t *testing.T) {
 	// Verify truncation marker is present
 	if !strings.HasSuffix(output.String(), sandbox.TruncationMarker) {
 		t.Fatalf("output should end with truncation marker")
+	}
+}
+
+// TestArtifactPlaceholderResolution verifies that {{artifact}} in a run.cmd
+// template is replaced with the bare artifact filename.
+// For compiled languages (cpp, c, rust, go) cmd is "./{{artifact}}" and
+// artifactFilename is "solution", so the result must be "./solution" —
+// correct for nsjail's --chroot=jailDir where "./solution" = jail root binary.
+func TestArtifactPlaceholderResolution(t *testing.T) {
+	tests := []struct {
+		name             string
+		cmdTemplate      string
+		artifactFilename string
+		want             string
+	}{
+		{"cpp binary", "./{{artifact}}", "solution", "./solution"},
+		{"c binary", "./{{artifact}}", "solution", "./solution"},
+		{"rust binary", "./{{artifact}}", "solution", "./solution"},
+		{"go binary", "./{{artifact}}", "solution", "./solution"},
+		{"bare artifact", "{{artifact}}", "solution", "solution"},
+		{"verilog vvp", "/usr/bin/{{artifact}}", "solution.vvp", "/usr/bin/solution.vvp"},
+		{"no placeholder", "/usr/bin/lua5.4", "solution.lua", "/usr/bin/lua5.4"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := strings.ReplaceAll(tt.cmdTemplate, config.TemplateArtifact, tt.artifactFilename)
+			if got != tt.want {
+				t.Errorf("ReplaceAll(%q, %q, %q) = %q, want %q",
+					tt.cmdTemplate, config.TemplateArtifact, tt.artifactFilename, got, tt.want)
+			}
+		})
 	}
 }
