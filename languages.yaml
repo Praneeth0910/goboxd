@@ -238,6 +238,18 @@ languages:
         wall_time_s: 9
         memory_kb: 102400
         max_processes: 100
+  lua:
+    id: lua
+    name: Lua
+    source_filename: solution.lua
+    run:
+      cmd: /usr/bin/lua5.4
+      args:
+        - "{{source}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 102400
+        max_processes: 100
 max_body_bytes: 4194304
 max_source_bytes: 262144
 max_tests: 50

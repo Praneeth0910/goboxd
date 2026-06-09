@@ -72,7 +72,8 @@ RUN python3 --version \
     && ruby --version \
     && rustc --version \
     && kotlinc -version \
-    && go version
+    && go version \
+    && lua5.4 -v
 
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/goboxd", "--config", "/etc/goboxd/languages.yaml"]
