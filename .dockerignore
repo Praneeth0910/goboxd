@@ -11,4 +11,5 @@ contextmedia_Alagents/
 tmp/
 tests/
 scripts/
+!scripts/lang_install/
 external/
