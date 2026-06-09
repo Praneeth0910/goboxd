@@ -152,3 +152,94 @@ Implemented Phase-Specific nsjail Arguments in `runner.go` (`buildNsjailBuildArg
 - Host secrets, config paths, and internal env vars are never visible to sandboxed processes
 - Languages that depend on specific env vars (e.g., `JAVA_HOME`) would need explicit additions — currently Java works without it because the JDK is on `PATH`
 - Build phase additionally gets `--env GOCACHE=/tmp` for Go compilation
+
+---
+
+## ADR-002: Per-language install scripts instead of monolithic Dockerfile RUN
+
+**Date:** 2026-06-09
+**Status:** Accepted
+
+**Context:** Demo-day requires adding a language in 30 minutes with no Dockerfile change.
+A monolithic `apt-get install` line requires Dockerfile edits for every new language.
+The judging spec scores the plug-and-play language model at 25% of Stage 2.
+
+**Options considered:**
+1. Monolithic `RUN apt-get install` line — simple but requires Dockerfile change per language
+2. Per-language scripts iterated at build time — adding a language = one .sh file + one YAML block
+3. Downloading language binaries at runtime — fragile, network-dependent, breaks immutability
+
+**Decision:** Use `scripts/lang_install/<id>.sh` scripts iterated at build time:
+```dockerfile
+COPY scripts/lang_install/ /tmp/lang_install/
+RUN apt-get update \
+    && for f in /tmp/lang_install/*.sh; do echo "== $f =="; bash "$f" || exit 1; done \
+    && rm -rf /var/lib/apt/lists/* /tmp/lang_install
+```
+
+**Consequences:**
+- Adding a language = one YAML block + one shell script. Zero Dockerfile change.
+- The `|| exit 1` ensures Docker fails loudly if any script fails
+- Scripts are alphabetically ordered by filename, so install order is deterministic
+- The smoke-test `RUN` block at the end of the Dockerfile catches missing toolchains
+
+---
+
+## ADR-003: Separate MaxBodyBytes from MaxSourceBytes
+
+**Date:** 2026-06-09
+**Status:** Accepted
+
+**Context:** Using `MaxSourceBytes` (256 KiB) as the `http.MaxBytesReader` body cap made
+`source_too_large` unreachable. A 300 KiB source field inside a 301 KiB JSON body would
+hit `MaxBytesReader` during `json.Decode()` and return `invalid_json`, not `source_too_large`.
+
+**Options considered:**
+1. Keep single limit, document `source_too_large` as alias for `invalid_json` — incorrect spec
+2. Separate limits: `MaxBodyBytes` = 4 MiB (body cap), `MaxSourceBytes` = 256 KiB (field check)
+
+**Decision:** Option 2. `MaxBodyBytes` = 4 MiB governs `http.MaxBytesReader`. After successful
+JSON decode, `len(req.Source) > MaxSourceBytes` triggers `source_too_large`. Two distinct
+limits, two distinct error codes, exactly as the spec requires.
+
+**Consequences:**
+- `source_too_large` is now reachable for the first time
+- `invalid_json` still fires when the entire body exceeds 4 MiB
+- `MaxBodyBytes` defaults to `4 * 1024 * 1024` in code and is also explicit in `languages.yaml`
+- Validation boundary tests can now distinguish the two error codes
+
+---
+
+## ADR-004: Whole-string TrimSpace for output_whitespace_mismatch
+
+**Date:** 2026-06-09
+**Status:** Accepted
+
+**Context:** The previous `CompareOutput` used `strings.Fields` + `strings.Join` to normalise
+whitespace, then compared. This collapsed internal whitespace runs, so `"hello  world"` and
+`"hello world"` were treated as equal under `output_whitespace_mismatch`. The spec says only
+leading/trailing whitespace is trimmed for this status; internal differences are `wrong_output`.
+
+**Options considered:**
+1. Keep `strings.Fields` normalisation — fails spec for internal whitespace differences
+2. Use `strings.TrimSpace` on the whole string — spec-correct, minimal change
+
+**Decision:** Option 2. `CompareOutput` now uses `strings.TrimSpace`:
+```go
+func CompareOutput(actual, expected string) string {
+    if actual == expected {
+        return StatusAccepted
+    }
+    if strings.TrimSpace(actual) == strings.TrimSpace(expected) {
+        return StatusOutputWhitespaceMismatch
+    }
+    return StatusWrongOutput
+}
+```
+
+**Consequences:**
+- `"hello  world\n"` vs `"hello world\n"` now correctly returns `wrong_output`
+- `"hello\n"` vs `"hello"` (trailing newline vs none) still returns `output_whitespace_mismatch`
+- `"  hello  \n"` vs `"hello"` still returns `output_whitespace_mismatch`
+- Inline `TrimRight` comparison in `runTestCase` was removed; all paths go through `CompareOutput`
+- `normalizeWhitespace` helper deleted (no longer used anywhere)

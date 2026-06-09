@@ -73,3 +73,60 @@ visibility by scoping them inside conditionals.
 For the README rewrite, I spent time on an intermediate version (~300 words,
 too terse) before the user asked for a better one. Should have asked for
 preferences upfront rather than defaulting to minimal.
+
+---
+
+# Postmortem — Team Sudo, GoBoxD Stage 2 Fixes
+
+## What was fixed (and why it was broken)
+
+**normalizeWhitespace was too aggressive.** The `CompareOutput` function used
+`strings.Fields` to split on all whitespace, then rejoined with single spaces.
+This meant `"hello  world"` and `"hello world"` matched as `output_whitespace_mismatch`
+instead of `wrong_output`. The spec says only leading/trailing whitespace is trimmed
+for that status — internal differences remain `wrong_output`. The fix was replacing
+`normalizeWhitespace` entirely with `strings.TrimSpace`. Three lines of code, one
+function deleted, spec-correct.
+
+The parallel issue was in `runTestCase`: there was an inline comparison using
+`strings.TrimRight(res.Stdout, "\r\n")` that bypassed `CompareOutput` entirely.
+Two codepaths doing the same thing differently — a classic maintainability bug.
+Fixed by removing the inline cases and routing all output comparison through
+`status.CompareOutput`.
+
+**source_too_large was unreachable.** The handler used `MaxSourceBytes` (256 KiB)
+as the `http.MaxBytesReader` body limit. A request with a 300 KiB source field would
+hit `MaxBytesReader` during `json.Decode()` and surface as `invalid_json` (read error),
+not `source_too_large`. The fix required separating the limits: `MaxBodyBytes` = 4 MiB
+caps the entire HTTP body; after JSON decode, `len(req.Source) > MaxSourceBytes` returns
+`source_too_large`. Simple in hindsight, easy to miss when reading the code linearly.
+
+**Dockerfile was a barrier to adding languages.** The original monolithic
+`apt-get install` line listed every language toolchain inline. Adding a new language
+required a Dockerfile edit, rebuild, and push — three steps that violate the "30-minute
+demo-day add" requirement. The restructure to per-language scripts (`scripts/lang_install/`)
+with a `for f in *.sh; do bash "$f"; done` loop makes adding a language a one-step YAML
++ one-step .sh file operation, with zero Dockerfile change.
+
+## What surprised me
+
+How small the fixes were relative to the scoring impact. The `normalizeWhitespace`
+bug was 3 lines. The `MaxBodyBytes` separation was ~8 lines. Together they're worth
+15% of the judging rubric (API contract conformance). The Dockerfile restructure
+is 25% of the rubric but only ~10 lines of actual change — the work was creating 11
+idempotent shell scripts.
+
+The inline `TrimRight` comparison in `runTestCase` having subtly different semantics
+from `CompareOutput` is the kind of divergence that's easy to introduce when two people
+both "fix" the same thing in different places. A unit test (now committed as
+`TestArtifactPlaceholderResolution`) prevents similar drift in the template expansion code.
+
+## What I'd do differently
+
+Write the `status` package unit tests before writing the implementation. A test for
+`CompareOutput("hello  world\n", "hello world\n") == "wrong_output"` would have caught
+the `normalizeWhitespace` bug immediately. Instead it took a spec re-read and a code audit.
+
+For limits, define all limit constants in one place (`config.go`) with a clear comment
+explaining what each limit governs. `MaxBodyBytes` and `MaxSourceBytes` being different
+things that both live in `Config` is not obvious without the comment.
