@@ -11,7 +11,7 @@ set -euo pipefail
 ENDPOINT="http://localhost:8083/run"
 PAYLOAD="$(dirname "$0")/run-request.json"
 DURATION=30
-TIMEOUT=40s
+TIMEOUT=10s
 RATES="5 10 25 50 75 100 150 200 300 400"
 VEGETA="/home/praneeth_0910/go/bin/vegeta"
 OUTDIR="$(dirname "$0")/run4"

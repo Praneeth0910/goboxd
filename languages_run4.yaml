@@ -363,4 +363,4 @@ max_body_bytes: 4194304
 max_source_bytes: 262144
 max_tests: 50
 max_concurrent: 8
-queue_timeout_s: 30
+queue_timeout_s: 7

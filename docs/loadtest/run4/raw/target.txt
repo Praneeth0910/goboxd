@@ -1,0 +1,3 @@
+POST http://localhost:8083/run
+Content-Type: application/json
+@docs/loadtest/run-request.json
