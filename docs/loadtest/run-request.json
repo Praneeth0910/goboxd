@@ -1,0 +1,9 @@
+{
+  "language": "java",
+  "source": "public class MemoryHog {\n    public static void main(String[] args) throws InterruptedException {\n        final int megabytes = readSize();\n        final int blockSize = 1 << 20;\n        final byte[][] blocks = new byte[megabytes][];\n        long checksum = 0;\n        for (int i = 0; i < megabytes; i++) {\n            byte[] block = new byte[blockSize];\n            for (int j = 0; j < blockSize; j += 4096) {\n                block[j] = (byte) (i * 31 + j);\n                checksum += block[j];\n            }\n            blocks[i] = block;\n        }\n        for (byte[] block : blocks) {\n            for (int j = 0; j < block.length; j += 512) {\n                checksum += block[j];\n            }\n        }\n        Thread.sleep(1000);\n        System.out.println(\"MemoryHog OK mb=\" + megabytes + \" checksum=\" + checksum);\n    }\n    private static int readSize() {\n        String env = System.getenv(\"MEMHOG_MB\");\n        if (env != null && !env.isEmpty()) {\n            try { return Integer.parseInt(env.trim()); } catch (NumberFormatException ignored) {}\n        }\n        return 150;\n    }\n}",
+  "source_filename": "MemoryHog.java",
+  "artifact_filename": "MemoryHog",
+  "tests": [
+    { "stdin": "", "expected_stdout": "MemoryHog OK mb=150 checksum=-101888\n" }
+  ]
+}

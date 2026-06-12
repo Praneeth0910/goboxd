@@ -89,6 +89,7 @@ languages:
     build:
       cmd: /usr/bin/javac
       args:
+        - "-J-Xmx512m"
         - "{{source}}"
       limits:
         wall_time_s: 5
@@ -97,9 +98,10 @@ languages:
     run:
       cmd: /usr/bin/java
       args:
+        - "-Xmx256m"
         - "-cp"
         - "."
-        - "Solution"
+        - "{{class}}"
       limits:
         wall_time_s: 5
         memory_kb: 524288
@@ -289,10 +291,11 @@ languages:
     run:
       cmd: /usr/bin/node
       args:
+        - "--jitless"
         - "{{artifact}}"
       limits:
         wall_time_s: 9
-        memory_kb: 524288
+        memory_kb: 1048576
         max_processes: 100
   scala:
     id: scala
@@ -327,6 +330,10 @@ languages:
     build:
       cmd: /usr/bin/swiftc
       args:
+        - "-module-cache-path"
+        - "/tmp/module-cache"
+        - "-use-ld=bfd"
+        - "-static-stdlib"
         - "{{source}}"
         - "-o"
         - "{{artifact}}"

@@ -41,3 +41,4 @@ contextmedia_AIagents/
 # Local compiled binaries and scripts
 nsjail
 test_endpoints*.sh
+payloads/*
