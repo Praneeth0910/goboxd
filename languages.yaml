@@ -91,6 +91,10 @@ languages:
       args:
         - "-g:none"
         - "-J-Xmx512m"
+        - "-J-XX:TieredStopAtLevel=1"
+        - "-J-XX:+UseSerialGC"
+        - "-J-XX:CICompilerCount=1"
+        - "-J-XX:-UsePerfData"
         - "{{source}}"
       limits:
         wall_time_s: 30
@@ -100,7 +104,11 @@ languages:
       cmd: /usr/bin/java
       args:
         - "-XX:TieredStopAtLevel=1"
+        - "-XX:+UseSerialGC"
+        - "-XX:CICompilerCount=1"
+        - "-XX:-UsePerfData"
         - "-Xmx512m"
+        - "-Xms256m"
         - "-cp"
         - "."
         - "{{class}}"
@@ -353,5 +361,5 @@ languages:
 max_body_bytes: 4194304
 max_source_bytes: 262144
 max_tests: 50
-max_concurrent: 0
+max_concurrent: 6
 queue_timeout_s: 30
