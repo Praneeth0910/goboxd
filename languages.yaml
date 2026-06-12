@@ -250,6 +250,97 @@ languages:
         wall_time_s: 9
         memory_kb: 102400
         max_processes: 100
+  ocaml:
+    id: ocaml
+    name: OCaml
+    source_filename: solution.ml
+    artifact: solution
+    build:
+      cmd: /usr/bin/ocamlopt
+      args:
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 10
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 9
+        memory_kb: 524288
+        max_processes: 64
+  typescript:
+    id: typescript
+    name: TypeScript
+    source_filename: solution.ts
+    artifact: solution.js
+    build:
+      cmd: /usr/local/bin/tsc
+      args:
+        - "{{source}}"
+        - "--target"
+        - "ES2020"
+      limits:
+        wall_time_s: 15
+        memory_kb: 2097152
+        max_processes: 100
+    run:
+      cmd: /usr/bin/node
+      args:
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 524288
+        max_processes: 100
+  scala:
+    id: scala
+    name: Scala
+    source_filename: solution.scala
+    artifact: solution.jar
+    build:
+      cmd: /usr/bin/scalac
+      args:
+        - "-J-Xmx512m"
+        - "{{source}}"
+        - "-d"
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 30
+        memory_kb: 4194304
+        max_processes: 100
+    run:
+      cmd: /usr/bin/scala
+      args:
+        - "-J-Xmx256m"
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 2097152
+        max_processes: 100
+  swift:
+    id: swift
+    name: Swift
+    source_filename: solution.swift
+    artifact: solution
+    build:
+      cmd: /usr/bin/swiftc
+      args:
+        - "{{source}}"
+        - "-o"
+        - "{{artifact}}"
+        - "-O"
+      limits:
+        wall_time_s: 40
+        memory_kb: 2097152
+        max_processes: 100
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 5
+        memory_kb: 524288
+        max_processes: 64
 max_body_bytes: 4194304
 max_source_bytes: 262144
 max_tests: 50

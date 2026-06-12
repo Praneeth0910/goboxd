@@ -1,0 +1,535 @@
+=== RUN   TestLoadValidInterpretedLanguage
+--- PASS: TestLoadValidInterpretedLanguage (0.00s)
+=== RUN   TestLoadValidCompiledLanguage
+--- PASS: TestLoadValidCompiledLanguage (0.00s)
+=== RUN   TestLoadDuplicateLanguageIDs
+--- PASS: TestLoadDuplicateLanguageIDs (0.00s)
+=== RUN   TestLoadNonexistentFile
+--- PASS: TestLoadNonexistentFile (0.00s)
+=== RUN   TestLoadEmptyYAML
+--- PASS: TestLoadEmptyYAML (0.00s)
+=== RUN   TestLoadMissingRunCmd
+--- PASS: TestLoadMissingRunCmd (0.00s)
+=== RUN   TestLoadInvalidYAML
+--- PASS: TestLoadInvalidYAML (0.00s)
+=== RUN   TestValidateZeroLanguages
+--- PASS: TestValidateZeroLanguages (0.00s)
+=== RUN   TestValidateEmptyLanguageID
+--- PASS: TestValidateEmptyLanguageID (0.00s)
+=== RUN   TestValidateMissingRunCmd
+--- PASS: TestValidateMissingRunCmd (0.00s)
+=== RUN   TestValidateBuildCmdEmpty
+--- PASS: TestValidateBuildCmdEmpty (0.00s)
+=== RUN   TestValidateMaxSourceBytesInvalid
+--- PASS: TestValidateMaxSourceBytesInvalid (0.00s)
+=== RUN   TestValidateMaxTestsInvalid
+--- PASS: TestValidateMaxTestsInvalid (0.00s)
+=== RUN   TestLoadDefaultLimits
+--- PASS: TestLoadDefaultLimits (0.00s)
+=== RUN   TestLoadMultipleLanguages
+--- PASS: TestLoadMultipleLanguages (0.00s)
+=== RUN   TestHealthz
+--- PASS: TestHealthz (0.00s)
+=== RUN   TestReadyz
+--- PASS: TestReadyz (0.00s)
+=== RUN   TestInfo_Shape
+--- PASS: TestInfo_Shape (0.00s)
+=== RUN   TestInfo_BuildInfo
+--- PASS: TestInfo_BuildInfo (0.00s)
+=== RUN   TestInfo_Languages
+--- PASS: TestInfo_Languages (0.00s)
+=== RUN   TestInfo_Limits
+--- PASS: TestInfo_Limits (0.00s)
+=== RUN   TestInfo_Stats
+--- PASS: TestInfo_Stats (0.00s)
+=== RUN   TestRun_Python3_HelloWorld
+--- PASS: TestRun_Python3_HelloWorld (0.07s)
+=== RUN   TestRun_Python3_MultiTest
+--- PASS: TestRun_Python3_MultiTest (0.18s)
+=== RUN   TestRun_Python3_WrongOutput
+--- PASS: TestRun_Python3_WrongOutput (0.07s)
+=== RUN   TestRun_Python3_RuntimeError
+--- PASS: TestRun_Python3_RuntimeError (0.10s)
+=== RUN   TestRun_Python3_WhitespaceMismatch
+--- PASS: TestRun_Python3_WhitespaceMismatch (0.08s)
+=== RUN   TestRun_Cpp_HelloWorld
+--- PASS: TestRun_Cpp_HelloWorld (0.65s)
+=== RUN   TestRun_Cpp_BuildFailed
+--- PASS: TestRun_Cpp_BuildFailed (0.03s)
+=== RUN   TestRun_Cpp_WithFlags
+--- PASS: TestRun_Cpp_WithFlags (0.71s)
+=== RUN   TestRun_Cpp_StdFlag
+--- PASS: TestRun_Cpp_StdFlag (0.66s)
+=== RUN   TestRun_UnknownLanguage
+--- PASS: TestRun_UnknownLanguage (0.00s)
+=== RUN   TestRun_PathTraversalFilename
+=== RUN   TestRun_PathTraversalFilename/../../etc/passwd
+=== RUN   TestRun_PathTraversalFilename/../solution.py
+=== RUN   TestRun_PathTraversalFilename//etc/passwd
+=== RUN   TestRun_PathTraversalFilename/.hidden
+=== RUN   TestRun_PathTraversalFilename/..
+=== RUN   TestRun_PathTraversalFilename/dir/solution.cpp
+=== RUN   TestRun_PathTraversalFilename/sol\nested.cpp
+--- PASS: TestRun_PathTraversalFilename (0.01s)
+    --- PASS: TestRun_PathTraversalFilename/../../etc/passwd (0.00s)
+    --- PASS: TestRun_PathTraversalFilename/../solution.py (0.00s)
+    --- PASS: TestRun_PathTraversalFilename//etc/passwd (0.00s)
+    --- PASS: TestRun_PathTraversalFilename/.hidden (0.00s)
+    --- PASS: TestRun_PathTraversalFilename/.. (0.00s)
+    --- PASS: TestRun_PathTraversalFilename/dir/solution.cpp (0.00s)
+    --- PASS: TestRun_PathTraversalFilename/sol\nested.cpp (0.00s)
+=== RUN   TestRun_FlagInjection
+=== RUN   TestRun_FlagInjection/-fplugin=evil.so
+=== RUN   TestRun_FlagInjection/@response_file
+=== RUN   TestRun_FlagInjection/--specs=/tmp/evil.spec
+=== RUN   TestRun_FlagInjection/-Wl,-rpath,/evil
+=== RUN   TestRun_FlagInjection/-B/tmp/evil
+=== RUN   TestRun_FlagInjection/-x_c
+=== RUN   TestRun_FlagInjection/-isystem_/etc
+=== RUN   TestRun_FlagInjection/-O2_-fplugin=evil.so
+--- PASS: TestRun_FlagInjection (0.01s)
+    --- PASS: TestRun_FlagInjection/-fplugin=evil.so (0.00s)
+    --- PASS: TestRun_FlagInjection/@response_file (0.00s)
+    --- PASS: TestRun_FlagInjection/--specs=/tmp/evil.spec (0.00s)
+    --- PASS: TestRun_FlagInjection/-Wl,-rpath,/evil (0.00s)
+    --- PASS: TestRun_FlagInjection/-B/tmp/evil (0.00s)
+    --- PASS: TestRun_FlagInjection/-x_c (0.00s)
+    --- PASS: TestRun_FlagInjection/-isystem_/etc (0.00s)
+    --- PASS: TestRun_FlagInjection/-O2_-fplugin=evil.so (0.00s)
+=== RUN   TestRun_SourceTooLarge
+--- PASS: TestRun_SourceTooLarge (0.01s)
+=== RUN   TestRun_TooManyTests
+--- PASS: TestRun_TooManyTests (0.00s)
+=== RUN   TestRun_EmptyTests
+--- PASS: TestRun_EmptyTests (0.00s)
+=== RUN   TestRun_InvalidJSON
+--- PASS: TestRun_InvalidJSON (0.00s)
+=== RUN   TestRun_ResponseShape
+--- PASS: TestRun_ResponseShape (0.06s)
+=== RUN   TestRun_CppResponseShape
+--- PASS: TestRun_CppResponseShape (0.67s)
+=== RUN   TestRun_StatusNeverFiveHundred
+=== RUN   TestRun_StatusNeverFiveHundred/crash
+=== RUN   TestRun_StatusNeverFiveHundred/infinite_loop_will_tle
+=== RUN   TestRun_StatusNeverFiveHundred/syntax_error
+--- PASS: TestRun_StatusNeverFiveHundred (9.24s)
+    --- PASS: TestRun_StatusNeverFiveHundred/crash (0.08s)
+    --- PASS: TestRun_StatusNeverFiveHundred/infinite_loop_will_tle (9.02s)
+    --- PASS: TestRun_StatusNeverFiveHundred/syntax_error (0.14s)
+=== RUN   TestConcurrency_QueueNotFail
+--- PASS: TestConcurrency_QueueNotFail (0.30s)
+=== RUN   TestStats_JobsTotalIncrement
+--- PASS: TestStats_JobsTotalIncrement (0.18s)
+=== RUN   TestContentType_JSON
+=== RUN   TestContentType_JSON/GET_/healthz
+=== RUN   TestContentType_JSON/GET_/readyz
+=== RUN   TestContentType_JSON/GET_/info
+--- PASS: TestContentType_JSON (0.00s)
+    --- PASS: TestContentType_JSON/GET_/healthz (0.00s)
+    --- PASS: TestContentType_JSON/GET_/readyz (0.00s)
+    --- PASS: TestContentType_JSON/GET_/info (0.00s)
+=== RUN   TestRun_EmptyStdin
+--- PASS: TestRun_EmptyStdin (0.08s)
+=== RUN   TestRun_LargeOutput
+--- PASS: TestRun_LargeOutput (0.08s)
+=== RUN   TestRun_NullByteInSource
+--- PASS: TestRun_NullByteInSource (0.00s)
+=== RUN   TestRun_NoTestsField
+--- PASS: TestRun_NoTestsField (0.00s)
+=== RUN   TestRun_ValidFilenames
+=== RUN   TestRun_ValidFilenames/solution.cpp
+=== RUN   TestRun_ValidFilenames/solution_v2.py
+=== RUN   TestRun_ValidFilenames/test-file.cpp
+=== RUN   TestRun_ValidFilenames/README.md
+=== RUN   TestRun_ValidFilenames/file123.txt
+=== RUN   TestRun_ValidFilenames/something..
+=== RUN   TestRun_ValidFilenames/header.h
+--- PASS: TestRun_ValidFilenames (0.52s)
+    --- PASS: TestRun_ValidFilenames/solution.cpp (0.07s)
+    --- PASS: TestRun_ValidFilenames/solution_v2.py (0.06s)
+    --- PASS: TestRun_ValidFilenames/test-file.cpp (0.07s)
+    --- PASS: TestRun_ValidFilenames/README.md (0.07s)
+    --- PASS: TestRun_ValidFilenames/file123.txt (0.09s)
+    --- PASS: TestRun_ValidFilenames/something.. (0.07s)
+    --- PASS: TestRun_ValidFilenames/header.h (0.09s)
+=== RUN   TestPhase3_ErrorEnvelope_InvalidJSON
+--- PASS: TestPhase3_ErrorEnvelope_InvalidJSON (0.00s)
+=== RUN   TestPhase3_ErrorEnvelope_UnknownLanguage
+--- PASS: TestPhase3_ErrorEnvelope_UnknownLanguage (0.00s)
+=== RUN   TestPhase3_RunRejectsGET
+--- PASS: TestPhase3_RunRejectsGET (0.00s)
+=== RUN   TestPhase3_RunRejectsPUT
+--- PASS: TestPhase3_RunRejectsPUT (0.00s)
+=== RUN   TestPhase3_RunRejectsDELETE
+--- PASS: TestPhase3_RunRejectsDELETE (0.00s)
+=== RUN   TestPhase3_HealthzRejectsPOST
+--- PASS: TestPhase3_HealthzRejectsPOST (0.00s)
+=== RUN   TestPhase3_Status_Accepted
+--- PASS: TestPhase3_Status_Accepted (0.09s)
+=== RUN   TestPhase3_Status_WrongOutput
+--- PASS: TestPhase3_Status_WrongOutput (0.08s)
+=== RUN   TestPhase3_Status_WhitespaceMismatch
+--- PASS: TestPhase3_Status_WhitespaceMismatch (0.08s)
+=== RUN   TestPhase3_Status_RuntimeError
+--- PASS: TestPhase3_Status_RuntimeError (0.07s)
+=== RUN   TestPhase3_Status_TimeExceeded
+    phase3_test.go:219: status: got "memory_exceeded", want time_exceeded or runtime_error
+--- FAIL: TestPhase3_Status_TimeExceeded (2.02s)
+=== RUN   TestPhase3_Status_BuildFailed
+--- PASS: TestPhase3_Status_BuildFailed (0.07s)
+=== RUN   TestPhase3_Status_NotExecuted
+--- PASS: TestPhase3_Status_NotExecuted (0.06s)
+=== RUN   TestPhase3_TopLevel_FirstNonAccepted
+--- PASS: TestPhase3_TopLevel_FirstNonAccepted (0.18s)
+=== RUN   TestPhase3_TopLevel_AllAccepted
+--- PASS: TestPhase3_TopLevel_AllAccepted (0.19s)
+=== RUN   TestPhase3_Cpp_BuildOK_RunAccepted
+--- PASS: TestPhase3_Cpp_BuildOK_RunAccepted (0.82s)
+=== RUN   TestPhase3_Cpp_BuildFailed_Stderr
+--- PASS: TestPhase3_Cpp_BuildFailed_Stderr (0.06s)
+=== RUN   TestPhase3_Cpp_RuntimeErrorAfterBuild
+--- PASS: TestPhase3_Cpp_RuntimeErrorAfterBuild (0.21s)
+=== RUN   TestPhase3_Py3_NoBuildField
+--- PASS: TestPhase3_Py3_NoBuildField (0.08s)
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_../../etc/passwd
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_../../../etc/shadow
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_..
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_.
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_.hidden
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_./solution.py
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_/etc/passwd
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_/tmp/evil
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_dir/file.py
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_sub\dir.py
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_.bashrc
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_.env
+=== RUN   TestPhase3_Security_PathTraversal_SourceFilename/source_..%2f..%2fetc%2fpasswd
+--- PASS: TestPhase3_Security_PathTraversal_SourceFilename (0.01s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_../../etc/passwd (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_../../../etc/shadow (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_.. (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_. (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_.hidden (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_./solution.py (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_/etc/passwd (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_/tmp/evil (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_dir/file.py (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_sub\dir.py (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_.bashrc (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_.env (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_SourceFilename/source_..%2f..%2fetc%2fpasswd (0.00s)
+=== RUN   TestPhase3_Security_PathTraversal_ArtifactFilename
+=== RUN   TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_../../etc/passwd
+=== RUN   TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_..
+=== RUN   TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_.
+=== RUN   TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_.evil
+=== RUN   TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_/tmp/evil
+=== RUN   TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_sub/dir
+=== RUN   TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_back\slash
+--- PASS: TestPhase3_Security_PathTraversal_ArtifactFilename (0.01s)
+    --- PASS: TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_../../etc/passwd (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_.. (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_. (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_.evil (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_/tmp/evil (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_sub/dir (0.00s)
+    --- PASS: TestPhase3_Security_PathTraversal_ArtifactFilename/artifact_back\slash (0.00s)
+=== RUN   TestPhase3_Security_FilenameControlChars
+=== RUN   TestPhase3_Security_FilenameControlChars/control_char_0
+=== RUN   TestPhase3_Security_FilenameControlChars/control_char_1
+=== RUN   TestPhase3_Security_FilenameControlChars/control_char_2
+=== RUN   TestPhase3_Security_FilenameControlChars/control_char_3
+--- PASS: TestPhase3_Security_FilenameControlChars (0.00s)
+    --- PASS: TestPhase3_Security_FilenameControlChars/control_char_0 (0.00s)
+    --- PASS: TestPhase3_Security_FilenameControlChars/control_char_1 (0.00s)
+    --- PASS: TestPhase3_Security_FilenameControlChars/control_char_2 (0.00s)
+    --- PASS: TestPhase3_Security_FilenameControlChars/control_char_3 (0.00s)
+=== RUN   TestPhase3_Security_FilenameTooLong
+--- PASS: TestPhase3_Security_FilenameTooLong (0.00s)
+=== RUN   TestPhase3_Security_ValidFilenames
+=== RUN   TestPhase3_Security_ValidFilenames/solution.py
+=== RUN   TestPhase3_Security_ValidFilenames/my_code.cpp
+=== RUN   TestPhase3_Security_ValidFilenames/file123.txt
+=== RUN   TestPhase3_Security_ValidFilenames/A.py
+=== RUN   TestPhase3_Security_ValidFilenames/test-case.cpp
+=== RUN   TestPhase3_Security_ValidFilenames/something..
+=== RUN   TestPhase3_Security_ValidFilenames/name.tar.gz
+--- PASS: TestPhase3_Security_ValidFilenames (0.53s)
+    --- PASS: TestPhase3_Security_ValidFilenames/solution.py (0.07s)
+    --- PASS: TestPhase3_Security_ValidFilenames/my_code.cpp (0.08s)
+    --- PASS: TestPhase3_Security_ValidFilenames/file123.txt (0.07s)
+    --- PASS: TestPhase3_Security_ValidFilenames/A.py (0.07s)
+    --- PASS: TestPhase3_Security_ValidFilenames/test-case.cpp (0.08s)
+    --- PASS: TestPhase3_Security_ValidFilenames/something.. (0.08s)
+    --- PASS: TestPhase3_Security_ValidFilenames/name.tar.gz (0.07s)
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/fplugin
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/response_file
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/specs
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/linker_injection
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/Bdir
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/include_system
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/x_lang
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/mixed_valid_and_attack
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/dumpspecs
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/wrapper
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/preprocess_only
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/shared_lib
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/nostdlib
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/pipe_to_shell
+=== RUN   TestPhase3_Security_FlagInjection_Exhaustive/custom_linker
+--- PASS: TestPhase3_Security_FlagInjection_Exhaustive (0.02s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/fplugin (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/response_file (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/specs (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/linker_injection (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/Bdir (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/include_system (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/x_lang (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/mixed_valid_and_attack (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/dumpspecs (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/wrapper (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/preprocess_only (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/shared_lib (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/nostdlib (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/pipe_to_shell (0.00s)
+    --- PASS: TestPhase3_Security_FlagInjection_Exhaustive/custom_linker (0.00s)
+=== RUN   TestPhase3_Security_ValidFlags
+=== RUN   TestPhase3_Security_ValidFlags/-O0
+=== RUN   TestPhase3_Security_ValidFlags/-O1
+=== RUN   TestPhase3_Security_ValidFlags/-O2
+=== RUN   TestPhase3_Security_ValidFlags/-O3
+=== RUN   TestPhase3_Security_ValidFlags/-Wall
+=== RUN   TestPhase3_Security_ValidFlags/-Wextra
+=== RUN   TestPhase3_Security_ValidFlags/-std=c++17
+=== RUN   TestPhase3_Security_ValidFlags/-std=c++20
+=== RUN   TestPhase3_Security_ValidFlags/-std=c11
+=== RUN   TestPhase3_Security_ValidFlags/-std=gnu++17
+=== RUN   TestPhase3_Security_ValidFlags/-O2_-Wall_-std=c++17
+=== RUN   TestPhase3_Security_ValidFlags/-O2_-Wextra
+--- PASS: TestPhase3_Security_ValidFlags (8.84s)
+    --- PASS: TestPhase3_Security_ValidFlags/-O0 (0.74s)
+    --- PASS: TestPhase3_Security_ValidFlags/-O1 (0.72s)
+    --- PASS: TestPhase3_Security_ValidFlags/-O2 (0.75s)
+    --- PASS: TestPhase3_Security_ValidFlags/-O3 (0.74s)
+    --- PASS: TestPhase3_Security_ValidFlags/-Wall (0.77s)
+    --- PASS: TestPhase3_Security_ValidFlags/-Wextra (0.75s)
+    --- PASS: TestPhase3_Security_ValidFlags/-std=c++17 (0.73s)
+    --- PASS: TestPhase3_Security_ValidFlags/-std=c++20 (0.85s)
+    --- PASS: TestPhase3_Security_ValidFlags/-std=c11 (0.67s)
+    --- PASS: TestPhase3_Security_ValidFlags/-std=gnu++17 (0.73s)
+    --- PASS: TestPhase3_Security_ValidFlags/-O2_-Wall_-std=c++17 (0.68s)
+    --- PASS: TestPhase3_Security_ValidFlags/-O2_-Wextra (0.70s)
+=== RUN   TestPhase3_Security_FlagsOnInterpretedLang
+--- PASS: TestPhase3_Security_FlagsOnInterpretedLang (0.01s)
+=== RUN   TestPhase3_Security_OversizedBody
+--- PASS: TestPhase3_Security_OversizedBody (0.01s)
+=== RUN   TestPhase3_Security_ExactlyAtLimit
+--- PASS: TestPhase3_Security_ExactlyAtLimit (0.08s)
+=== RUN   TestPhase3_Validation_ZeroTests
+--- PASS: TestPhase3_Validation_ZeroTests (0.00s)
+=== RUN   TestPhase3_Validation_NullTests
+--- PASS: TestPhase3_Validation_NullTests (0.00s)
+=== RUN   TestPhase3_Validation_ExactlyOneTest
+--- PASS: TestPhase3_Validation_ExactlyOneTest (0.07s)
+=== RUN   TestPhase3_Validation_ExactlyMaxTests
+--- PASS: TestPhase3_Validation_ExactlyMaxTests (3.03s)
+=== RUN   TestPhase3_Validation_OverMaxTests
+--- PASS: TestPhase3_Validation_OverMaxTests (0.00s)
+=== RUN   TestPhase3_JSON_EmptyBody
+--- PASS: TestPhase3_JSON_EmptyBody (0.00s)
+=== RUN   TestPhase3_JSON_ArrayInsteadOfObject
+--- PASS: TestPhase3_JSON_ArrayInsteadOfObject (0.00s)
+=== RUN   TestPhase3_JSON_UnknownFields
+--- PASS: TestPhase3_JSON_UnknownFields (0.00s)
+=== RUN   TestPhase3_JSON_DuplicateKeys
+--- PASS: TestPhase3_JSON_DuplicateKeys (0.06s)
+=== RUN   TestPhase3_Response_TestFields
+--- PASS: TestPhase3_Response_TestFields (0.08s)
+=== RUN   TestPhase3_Response_CppBuildFields
+--- PASS: TestPhase3_Response_CppBuildFields (0.75s)
+=== RUN   TestPhase3_Response_ContentType
+--- PASS: TestPhase3_Response_ContentType (0.06s)
+=== RUN   TestPhase3_Response_ContentType_OnError
+--- PASS: TestPhase3_Response_ContentType_OnError (0.00s)
+=== RUN   TestPhase3_Info_LanguagesHaveRunLimits
+--- PASS: TestPhase3_Info_LanguagesHaveRunLimits (0.00s)
+=== RUN   TestPhase3_Info_NsjailBlock
+--- PASS: TestPhase3_Info_NsjailBlock (0.00s)
+=== RUN   TestPhase3_Info_DiskFreeBytes
+--- PASS: TestPhase3_Info_DiskFreeBytes (0.00s)
+=== RUN   TestPhase3_Healthz_AlwaysOK
+--- PASS: TestPhase3_Healthz_AlwaysOK (0.00s)
+=== RUN   TestPhase3_Readyz_LanguageProbes
+--- PASS: TestPhase3_Readyz_LanguageProbes (0.00s)
+=== RUN   TestPhase3_Concurrency_AllRequestsComplete
+--- PASS: TestPhase3_Concurrency_AllRequestsComplete (0.37s)
+=== RUN   TestPhase3_Concurrency_NeverFiveHundred
+--- PASS: TestPhase3_Concurrency_NeverFiveHundred (0.38s)
+=== RUN   TestPhase3_Concurrency_MixedLanguages
+--- PASS: TestPhase3_Concurrency_MixedLanguages (2.20s)
+=== RUN   TestPhase3_Stats_IncrementAfterRun
+--- PASS: TestPhase3_Stats_IncrementAfterRun (0.25s)
+=== RUN   TestPhase3_Stats_InFlightReturnsToZero
+--- PASS: TestPhase3_Stats_InFlightReturnsToZero (0.27s)
+=== RUN   TestPhase3_Output_ExactMatch
+--- PASS: TestPhase3_Output_ExactMatch (0.07s)
+=== RUN   TestPhase3_Output_TrailingNewlineMismatch
+--- PASS: TestPhase3_Output_TrailingNewlineMismatch (0.07s)
+=== RUN   TestPhase3_Output_EmptyExpectedEmptyActual
+--- PASS: TestPhase3_Output_EmptyExpectedEmptyActual (0.07s)
+=== RUN   TestPhase3_Output_MultilineComparison
+--- PASS: TestPhase3_Output_MultilineComparison (0.05s)
+=== RUN   TestPhase3_Stdin_MultipleLines
+--- PASS: TestPhase3_Stdin_MultipleLines (0.08s)
+=== RUN   TestPhase3_Stdin_EmptyString
+--- PASS: TestPhase3_Stdin_EmptyString (0.08s)
+=== RUN   TestPhase3_Stdin_PerTestIsolation
+--- PASS: TestPhase3_Stdin_PerTestIsolation (0.20s)
+=== RUN   TestPhase3_Never5xx_ZeroDivision
+--- PASS: TestPhase3_Never5xx_ZeroDivision (0.10s)
+=== RUN   TestPhase3_Never5xx_SegfaultCpp
+--- PASS: TestPhase3_Never5xx_SegfaultCpp (0.20s)
+=== RUN   TestPhase3_Never5xx_ForkBomb
+--- PASS: TestPhase3_Never5xx_ForkBomb (11.01s)
+=== RUN   TestPhase3_Never5xx_InfiniteOutput
+--- PASS: TestPhase3_Never5xx_InfiniteOutput (3.08s)
+=== RUN   TestPhase3_Never5xx_SyntaxError
+--- PASS: TestPhase3_Never5xx_SyntaxError (0.15s)
+=== RUN   TestPhase3_Never5xx_MemoryHog
+--- PASS: TestPhase3_Never5xx_MemoryHog (1.07s)
+=== RUN   TestPhase3_WallTime_PositiveValue
+--- PASS: TestPhase3_WallTime_PositiveValue (0.19s)
+=== RUN   TestPhase3_MultiTest_MixedStatuses
+--- PASS: TestPhase3_MultiTest_MixedStatuses (0.23s)
+=== RUN   TestPhase3_MultiTest_TestCountMatchesRequest
+=== RUN   TestPhase3_MultiTest_TestCountMatchesRequest/n=1
+=== RUN   TestPhase3_MultiTest_TestCountMatchesRequest/n=3
+=== RUN   TestPhase3_MultiTest_TestCountMatchesRequest/n=5
+=== RUN   TestPhase3_MultiTest_TestCountMatchesRequest/n=10
+--- PASS: TestPhase3_MultiTest_TestCountMatchesRequest (1.95s)
+    --- PASS: TestPhase3_MultiTest_TestCountMatchesRequest/n=1 (0.07s)
+    --- PASS: TestPhase3_MultiTest_TestCountMatchesRequest/n=3 (0.42s)
+    --- PASS: TestPhase3_MultiTest_TestCountMatchesRequest/n=5 (0.50s)
+    --- PASS: TestPhase3_MultiTest_TestCountMatchesRequest/n=10 (0.96s)
+=== RUN   TestPhase3_SpecialChars_Unicode
+--- PASS: TestPhase3_SpecialChars_Unicode (0.07s)
+=== RUN   TestPhase3_SpecialChars_Emoji
+--- PASS: TestPhase3_SpecialChars_Emoji (0.08s)
+=== RUN   TestPhase3_SpecialChars_Backslashes
+--- PASS: TestPhase3_SpecialChars_Backslashes (0.12s)
+=== RUN   TestPhase3_SpecialChars_Quotes
+--- PASS: TestPhase3_SpecialChars_Quotes (0.28s)
+=== RUN   TestPhase3_Stderr_PythonWarning
+--- PASS: TestPhase3_Stderr_PythonWarning (0.28s)
+=== RUN   TestPhase3_Stderr_CppCompilerError
+--- PASS: TestPhase3_Stderr_CppCompilerError (0.17s)
+=== RUN   TestPhase3_RootRedirect
+--- PASS: TestPhase3_RootRedirect (0.00s)
+=== RUN   TestPhase3_Idempotency
+--- PASS: TestPhase3_Idempotency (0.16s)
+=== RUN   TestPhase3_Optional_NoSourceFilename
+--- PASS: TestPhase3_Optional_NoSourceFilename (0.10s)
+=== RUN   TestPhase3_Optional_NoBuild
+--- PASS: TestPhase3_Optional_NoBuild (0.82s)
+=== RUN   TestPhase3_Optional_NoRun
+--- PASS: TestPhase3_Optional_NoRun (0.10s)
+=== RUN   TestPhase3_Optional_EmptyBuildFlags
+--- PASS: TestPhase3_Optional_EmptyBuildFlags (1.39s)
+=== RUN   TestPhase3_Security_NullByteInSource
+--- PASS: TestPhase3_Security_NullByteInSource (0.11s)
+=== RUN   TestPhase3_Security_NullByteInStdin
+--- PASS: TestPhase3_Security_NullByteInStdin (0.25s)
+=== RUN   TestPhase3_Flags_GlobMatching
+=== RUN   TestPhase3_Flags_GlobMatching/-std=c++11
+=== RUN   TestPhase3_Flags_GlobMatching/-std=c++14
+=== RUN   TestPhase3_Flags_GlobMatching/-std=c++17
+=== RUN   TestPhase3_Flags_GlobMatching/-std=c++20
+=== RUN   TestPhase3_Flags_GlobMatching/-std=c11
+=== RUN   TestPhase3_Flags_GlobMatching/-std=gnu++17
+--- PASS: TestPhase3_Flags_GlobMatching (7.39s)
+    --- PASS: TestPhase3_Flags_GlobMatching/-std=c++11 (3.13s)
+    --- PASS: TestPhase3_Flags_GlobMatching/-std=c++14 (0.90s)
+    --- PASS: TestPhase3_Flags_GlobMatching/-std=c++17 (0.88s)
+    --- PASS: TestPhase3_Flags_GlobMatching/-std=c++20 (0.93s)
+    --- PASS: TestPhase3_Flags_GlobMatching/-std=c11 (0.71s)
+    --- PASS: TestPhase3_Flags_GlobMatching/-std=gnu++17 (0.84s)
+=== RUN   TestPhase3_Flags_NilBuild
+--- PASS: TestPhase3_Flags_NilBuild (0.78s)
+=== RUN   TestPhase3_NotFound
+--- PASS: TestPhase3_NotFound (0.00s)
+=== RUN   TestPhase3_Stress_QueueDrain
+    phase3_test.go:1735: stress test: 30 requests completed in 629.29463ms
+--- PASS: TestPhase3_Stress_QueueDrain (0.63s)
+=== RUN   TestTopLevelStatus
+=== RUN   TestTopLevelStatus/build_failed,_any_tests
+=== RUN   TestTopLevelStatus/build_failed,_empty_tests
+=== RUN   TestTopLevelStatus/internal_error_build_status
+=== RUN   TestTopLevelStatus/build_ok,_all_tests_accepted
+=== RUN   TestTopLevelStatus/build_ok,_no_tests
+=== RUN   TestTopLevelStatus/build_ok,_mixed_[accepted,_wrong_output,_time_exceeded]
+=== RUN   TestTopLevelStatus/build_ok,_[time_exceeded,_accepted]
+=== RUN   TestTopLevelStatus/build_ok,_[accepted,_runtime_error]
+=== RUN   TestTopLevelStatus/build_ok,_single_test_wrong_output
+=== RUN   TestTopLevelStatus/build_ok,_[memory_exceeded,_accepted,_wrong_output]
+--- PASS: TestTopLevelStatus (0.00s)
+    --- PASS: TestTopLevelStatus/build_failed,_any_tests (0.00s)
+    --- PASS: TestTopLevelStatus/build_failed,_empty_tests (0.00s)
+    --- PASS: TestTopLevelStatus/internal_error_build_status (0.00s)
+    --- PASS: TestTopLevelStatus/build_ok,_all_tests_accepted (0.00s)
+    --- PASS: TestTopLevelStatus/build_ok,_no_tests (0.00s)
+    --- PASS: TestTopLevelStatus/build_ok,_mixed_[accepted,_wrong_output,_time_exceeded] (0.00s)
+    --- PASS: TestTopLevelStatus/build_ok,_[time_exceeded,_accepted] (0.00s)
+    --- PASS: TestTopLevelStatus/build_ok,_[accepted,_runtime_error] (0.00s)
+    --- PASS: TestTopLevelStatus/build_ok,_single_test_wrong_output (0.00s)
+    --- PASS: TestTopLevelStatus/build_ok,_[memory_exceeded,_accepted,_wrong_output] (0.00s)
+=== RUN   TestCompareOutput
+=== RUN   TestCompareOutput/exact_match
+=== RUN   TestCompareOutput/exact_match_empty_strings
+=== RUN   TestCompareOutput/exact_match_with_newline
+=== RUN   TestCompareOutput/trailing_newline_difference
+=== RUN   TestCompareOutput/leading_and_trailing_spaces
+=== RUN   TestCompareOutput/multiple_spaces_between_words
+=== RUN   TestCompareOutput/tabs_and_spaces
+=== RUN   TestCompareOutput/multiple_newlines
+=== RUN   TestCompareOutput/case_sensitivity
+=== RUN   TestCompareOutput/empty_vs_non-empty
+=== RUN   TestCompareOutput/non-empty_vs_empty
+=== RUN   TestCompareOutput/different_content
+=== RUN   TestCompareOutput/substring_mismatch
+=== RUN   TestCompareOutput/numbers_differ
+--- PASS: TestCompareOutput (0.00s)
+    --- PASS: TestCompareOutput/exact_match (0.00s)
+    --- PASS: TestCompareOutput/exact_match_empty_strings (0.00s)
+    --- PASS: TestCompareOutput/exact_match_with_newline (0.00s)
+    --- PASS: TestCompareOutput/trailing_newline_difference (0.00s)
+    --- PASS: TestCompareOutput/leading_and_trailing_spaces (0.00s)
+    --- PASS: TestCompareOutput/multiple_spaces_between_words (0.00s)
+    --- PASS: TestCompareOutput/tabs_and_spaces (0.00s)
+    --- PASS: TestCompareOutput/multiple_newlines (0.00s)
+    --- PASS: TestCompareOutput/case_sensitivity (0.00s)
+    --- PASS: TestCompareOutput/empty_vs_non-empty (0.00s)
+    --- PASS: TestCompareOutput/non-empty_vs_empty (0.00s)
+    --- PASS: TestCompareOutput/different_content (0.00s)
+    --- PASS: TestCompareOutput/substring_mismatch (0.00s)
+    --- PASS: TestCompareOutput/numbers_differ (0.00s)
+=== RUN   TestStatusFromExitCode
+=== RUN   TestStatusFromExitCode/timeout_regardless_of_exit_code
+=== RUN   TestStatusFromExitCode/timeout_with_non-zero_exit
+=== RUN   TestStatusFromExitCode/memory_killed
+=== RUN   TestStatusFromExitCode/memory_killed_with_non-zero_exit
+=== RUN   TestStatusFromExitCode/zero_exit_code_(success)
+=== RUN   TestStatusFromExitCode/non-zero_exit_code_(runtime_error)
+=== RUN   TestStatusFromExitCode/exit_code_127_(not_found)
+--- PASS: TestStatusFromExitCode (0.00s)
+    --- PASS: TestStatusFromExitCode/timeout_regardless_of_exit_code (0.00s)
+    --- PASS: TestStatusFromExitCode/timeout_with_non-zero_exit (0.00s)
+    --- PASS: TestStatusFromExitCode/memory_killed (0.00s)
+    --- PASS: TestStatusFromExitCode/memory_killed_with_non-zero_exit (0.00s)
+    --- PASS: TestStatusFromExitCode/zero_exit_code_(success) (0.00s)
+    --- PASS: TestStatusFromExitCode/non-zero_exit_code_(runtime_error) (0.00s)
+    --- PASS: TestStatusFromExitCode/exit_code_127_(not_found) (0.00s)
+FAIL
+FAIL	github.com/thesouldev/goboxd/tests	66.114s
+FAIL

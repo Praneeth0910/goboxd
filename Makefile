@@ -1,4 +1,4 @@
-.PHONY: build run test integration load lint vet clean help
+.PHONY: build build-offline run test integration load lint vet clean help
 
 # Variables
 DOCKER_COMPOSE  := docker compose
@@ -27,7 +27,16 @@ help:
 # Build Docker image
 build:
 	@echo "$(GREEN)Building Docker image...$(NC)"
-	$(DOCKER) build -t $(GOBOXD_IMAGE) .
+	$(DOCKER) build --pull=false -t $(GOBOXD_IMAGE) .
+
+# Build using local cache only (when Docker Hub is unreachable)
+build-offline:
+	@echo "$(GREEN)Building Docker image (offline mode)...$(NC)"
+	@echo "$(YELLOW)Requires goboxd:latest to exist locally$(NC)"
+	CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=0.1.0 -X main.commit=local" -o goboxd-bin ./cmd/goboxd
+	$(DOCKER) build --pull=false -f Dockerfile.offline -t $(GOBOXD_IMAGE) .
+	rm -f goboxd-bin
+
 
 # Run with docker-compose
 run: build

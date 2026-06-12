@@ -1,5 +1,6 @@
 # Stage 1: Build nsjail
 FROM debian:trixie-slim AS nsjail-builder
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     autoconf bison flex gcc g++ git libprotobuf-dev libnl-route-3-dev libtool make pkg-config protobuf-compiler
 WORKDIR /nsjail
@@ -26,6 +27,7 @@ RUN CGO_ENABLED=0 go build \
 
 # Stage 3: Runtime — trixie provides GLIBC 2.41 (nsjail requires >= 2.38)
 FROM debian:trixie-slim
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install nsjail runtime dependencies and base system tools.
 # Language toolchains are installed via per-language scripts below.

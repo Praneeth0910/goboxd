@@ -1,0 +1,18 @@
+FROM goboxd:latest
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install npm (needed for tsc) and scala (JDK already present from kotlin)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends npm scala \
+    && npm install -g typescript \
+    && rm -rf /var/lib/apt/lists/*
+
+# Update languages.yaml with TypeScript + Scala + tsc path fix
+COPY languages.yaml /etc/goboxd/languages.yaml
+
+# Smoke-test new toolchains
+RUN tsc --version && scala -version
+
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/goboxd", "--config", "/etc/goboxd/languages.yaml"]
