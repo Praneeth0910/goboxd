@@ -89,21 +89,23 @@ languages:
     build:
       cmd: /usr/bin/javac
       args:
+        - "-g:none"
         - "-J-Xmx512m"
         - "{{source}}"
       limits:
-        wall_time_s: 5
+        wall_time_s: 30
         memory_kb: 1048576
         max_processes: 100
     run:
       cmd: /usr/bin/java
       args:
-        - "-Xmx256m"
+        - "-XX:TieredStopAtLevel=1"
+        - "-Xmx512m"
         - "-cp"
         - "."
         - "{{class}}"
       limits:
-        wall_time_s: 5
+        wall_time_s: 15
         memory_kb: 524288
         max_processes: 100
 
