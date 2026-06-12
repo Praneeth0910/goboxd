@@ -243,3 +243,22 @@ func CompareOutput(actual, expected string) string {
 - `"  hello  \n"` vs `"hello"` still returns `output_whitespace_mismatch`
 - Inline `TrimRight` comparison in `runTestCase` was removed; all paths go through `CompareOutput`
 - `normalizeWhitespace` helper deleted (no longer used anywhere)
+
+---
+
+## ADR-005: Host cgroup Namespace for Docker Compose
+
+**Date:** 2026-06-12
+**Status:** Accepted
+
+**Context:** On newer Linux distributions (like Ubuntu 22.04+) using cgroupv2, Docker defaults to private cgroup namespaces (`cgroupns: private`). When goboxd runs in a Docker container and tries to spawn nsjail sandboxes with per-request memory tracking (`--cgroup_mem_parent`), it fails if the container's view of the cgroup filesystem is isolated from the host. This caused memory limits to fail or be tracked incorrectly.
+
+**Options considered:**
+1. Let Docker manage cgroup namespaces (default) — causes cgroupv2 memory tracking to fail in nsjail.
+2. Explicitly share the host's cgroup namespace (`cgroupns: host`).
+
+**Decision:** Option 2. Added `cgroupns: host` to the `goboxd` service definition in `docker-compose.yml`.
+
+**Consequences:**
+- cgroupv2 memory limits and `memory.peak` tracking now work correctly on Ubuntu 22.04+.
+- `docker-compose up` behaves identically to the `docker run --cgroupns=host` command.

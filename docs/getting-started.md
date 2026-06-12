@@ -330,7 +330,7 @@ Every response from `POST /run` uses the same structure. Here's what each field 
 
 ## Supported Languages
 
-goboxd supports **11 languages** out of the box:
+goboxd supports **16 languages** out of the box:
 
 | Language ID | Language | Type |
 |-------------|----------|------|
@@ -345,6 +345,11 @@ goboxd supports **11 languages** out of the box:
 | `bash` | Bash (sh) | Interpreted |
 | `ruby` | Ruby | Interpreted |
 | `verilog` | Verilog | Compiled |
+| `lua` | Lua | Interpreted |
+| `ocaml` | OCaml | Compiled |
+| `typescript` | TypeScript | Compiled |
+| `scala` | Scala | Compiled |
+| `swift` | Swift | Compiled |
 
 ---
 

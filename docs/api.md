@@ -157,7 +157,7 @@ Execute source code in a sandboxed environment and run test cases against it.
 
 | Field               | Type        | Required | Description                                                                 |
 |---------------------|-------------|----------|-----------------------------------------------------------------------------|
-| `language`          | string      | Yes      | Language ID from `languages.yaml` (e.g., `py3`, `cpp`)                      |
+| `language`          | string      | Yes      | Language ID from `languages.yaml` (e.g., `py3`, `cpp`, `ocaml`, `typescript`, `scala`, `swift`) |
 | `source`            | string      | Yes      | Source code to execute                                                       |
 | `source_filename`   | string      | No       | Filename for the source file (defaults to language config)                   |
 | `artifact_filename` | string      | No       | Output binary name for compiled languages (defaults to language config)      |

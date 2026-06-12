@@ -75,3 +75,36 @@ Rewrote it to ~500 words across five sections (Isolation model, Languages, API, 
 
 **Why it changed:**
 The spec called for a short README. The existing one was a standalone tutorial that duplicated content already in `docs/getting-started.md`, `docs/how-to-use.md`, and `docs/api.md`. The rewrite leads with the isolation model (the project's core differentiator) rather than burying it below a 200-word quickstart. The security section was added separately at the user's request to ensure judges see the defense-in-depth story without needing to navigate to `docs/security.md`.
+
+## 12-06-26 - Expanded Language Support (OCaml, TypeScript, Scala, Swift)
+
+**What I thought I'd do:**
+I originally planned to just stick to the 11 base languages, maybe adding one or two simple interpreted languages if time permitted.
+
+**What I actually did:**
+I added support for OCaml, TypeScript, Scala, and Swift. I separated their installation logic into standalone scripts (`scripts/lang_install/*.sh`) and updated `languages.yaml` with their specific build and run configurations. 
+
+**Why it changed:**
+I wanted to prove the extensibility of the `languages.yaml` configuration pattern I built. By supporting complex toolchains like Swift (which requires custom linker flags) and Scala (which needs heavy JVM tuning), I demonstrated that the sandbox architecture is language-agnostic and scales cleanly without needing to touch Go code.
+
+## 12-06-26 - Automated Load Testing Infrastructure
+
+**What I thought I'd do:**
+Manually run a few `curl` or `hey` commands to check if the server could handle concurrent requests.
+
+**What I actually did:**
+I built a comprehensive automated load testing suite using Vegeta, complete with bash scripts (`load-test.sh`) and Python visualization tools (`plot.py`). I configured it to hit the server with a CPU-intensive Java payload (`MemoryHog.java`) and generate latency distribution graphs.
+
+**Why it changed:**
+Manual testing was not giving me reliable data on queue saturation. To truly understand how `max_concurrent` and `queue_timeout_s` interacted under extreme pressure, I needed repeatable, high-resolution metrics. The automated suite allowed me to scientifically benchmark the server across 4 distinct runs and visually prove graceful degradation.
+
+## 12-06-26 - Concurrency Limits and Queue Timeout Tuning
+
+**What I thought I'd do:**
+I assumed a generous `queue_timeout_s` (like 30 seconds) would be the best way to handle traffic spikes, ensuring no request is dropped prematurely.
+
+**What I actually did:**
+Through Load Test Runs 1-4, I discovered this was a critical flaw. I tightened the `queue_timeout_s` all the way down to 7 seconds to perfectly align with the strict 10-second client deadline.
+
+**Why it changed:**
+In Run 3, I realized that holding a request in the queue for 8 seconds, only for it to take 2.5 seconds to execute, meant it finished at 10.5 seconds—violating the client's 10-second deadline and causing silent client-side timeouts. By deriving the formula `queue_timeout_s + execution_time < client_timeout`, I reduced the timeout to 7s in Run 4. This immediately purged requests that were doomed to fail, freeing up queue slots and surging the success rate by 3x.

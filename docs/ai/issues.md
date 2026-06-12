@@ -336,3 +336,59 @@ Replaced all usages of the local `lang` variable with direct map accesses: `h.cf
 **What I learned:**
 When iterating over maps of structs that contain slices or other heap-allocated fields, avoid copying the value into a local variable unless you actually need a snapshot. Direct field access through the map is both allocation-free and lint-clean.
 
+## 12-06-26 - Monolithic Dockerfile became unmaintainable with new languages
+
+**What I was trying to do:**
+Add support for OCaml, TypeScript, Scala, and Swift to the sandbox by installing all their respective toolchains via `apt-get` and custom commands inside the main Dockerfile.
+
+**What went wrong:**
+The Dockerfile grew massive and extremely slow to build. Adding Swift required custom repository keys and downloading a tarball, while TypeScript needed `npm install -g typescript`. Any failure in one language's installation halted the entire build. Furthermore, tracking which dependencies belonged to which language became nearly impossible.
+
+**How I resolved it:**
+I refactored the installation process by creating a `scripts/lang_install/` directory. Each language now has its own standalone installation script (e.g., `swift.sh`, `typescript.sh`, `scala.sh`). The Dockerfile simply copies these scripts and executes them in a loop.
+
+**What I learned:**
+A monolithic build configuration is fragile. Using the Strategy Pattern for environment provisioning (one self-contained script per language) isolates failures, dramatically improves readability, and makes it trivial to add or remove language support without touching the core Dockerfile.
+
+## 12-06-26 - JVM CPU thrashing under concurrent load
+
+**What I was trying to do:**
+During Load Test Run 1, I tried to handle a high volume of concurrent Java requests (`MemoryHog.java`) by setting `max_concurrent` to a high number (e.g., 50 or 100), hoping the kernel scheduler would balance the load.
+
+**What went wrong:**
+Throughput plummeted to ~5 RPS, and p99 latency skyrocketed. Because compilation (`javac`) and execution (`java`) are extremely CPU-intensive, launching 50 concurrent JVMs on a 2 vCPU machine caused catastrophic context switching and CPU thrashing. Almost no requests finished quickly because they were constantly fighting for CPU time.
+
+**How I resolved it:**
+In Load Test Run 2, I applied JVM tuning flags (`-XX:TieredStopAtLevel=1 -XX:+UseSerialGC -XX:CICompilerCount=1`) to strip down the JVM overhead. More importantly, I dropped `max_concurrent` down to 6. This ensured the server only processed a few requests simultaneously, allowing them to finish quickly without CPU contention.
+
+**What I learned:**
+Concurrency is not parallelism. When dealing with heavy, CPU-bound workloads like JVM compilation, bounding concurrency to slightly above the number of available CPU cores yields significantly better throughput and latency than allowing unbounded concurrency.
+
+## 12-06-26 - Queue logic flaw causing silent client-side timeouts
+
+**What I was trying to do:**
+In Load Test Run 3, I set a strict 10-second deadline on the client side (Vegeta) to simulate real-world conditions where users won't wait forever. I kept the server's `queue_timeout_s` at a generous 30 seconds to ensure no requests were dropped.
+
+**What went wrong:**
+The server reported a near 100% success rate, but Vegeta reported massive failure rates (status code 0). The server was holding requests in the queue for 8-9 seconds, executing them for 2-3 seconds, and then successfully returning a 200 OK. But because the total round-trip took 11 seconds, the client had already timed out and closed the connection at the 10-second mark. The server was doing useless work for clients that were already gone.
+
+**How I resolved it:**
+In Load Test Run 4, I deduced the strict formula: `queue_timeout_s + average_execution_time < client_timeout`. I aggressively reduced `queue_timeout_s` to 7 seconds. 
+
+**What I learned:**
+Server-side queue timeouts must always be tightly coupled with expected execution times and strict client deadlines. Holding onto a request longer than a client is willing to wait leads to wasted server resources and silent failures.
+
+## 12-06-26 - Graceful degradation required aggressive 429 shedding
+
+**What I was trying to do:**
+Ensure the sandbox never crashed or hung indefinitely when flooded with 30 RPS of heavy JVM compilation tasks.
+
+**What went wrong:**
+Before tuning the queue timeout, the server tried too hard to eventually process every request. Because requests were piling up in the channel faster than they could be processed, memory usage spiked and latency degraded completely. The system was failing to degrade gracefully under extreme pressure.
+
+**How I resolved it:**
+By combining the fixed `max_concurrent` (to prevent CPU thrashing) with the shortened `queue_timeout_s` (7s), the channel quickly filled up, and any subsequent requests correctly timed out while waiting for a slot. This triggered a fast, clean HTTP 429 Too Many Requests response.
+
+**What I learned:**
+Returning a fast HTTP 429 is a feature, not a bug. Shedding load quickly preserves the health of the system for the requests that are currently executing, representing a textbook implementation of graceful degradation.
+

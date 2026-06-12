@@ -20,6 +20,10 @@ GoBoxD supports the following languages out of the box. Adding a new language re
 | `kotlin` | Kotlin | Compiled | `solution.kt` | `/usr/bin/kotlinc` | `/usr/bin/java -jar solution.jar` |
 | `ruby` | Ruby | Interpreted | `solution.rb` | — | `/usr/bin/ruby` |
 | `lua` | Lua | Interpreted | `solution.lua` | — | `/usr/bin/lua5.4` |
+| `ocaml` | OCaml | Compiled | `solution.ml` | `/usr/bin/ocamlopt` | `./solution` |
+| `typescript` | TypeScript | Compiled | `solution.ts` | `/usr/local/bin/tsc` | `/usr/bin/node --jitless solution.js` |
+| `scala` | Scala | Compiled | `solution.scala` | `/usr/bin/scalac` | `/usr/bin/scala -J-Xmx256m solution.jar` |
+| `swift` | Swift | Compiled | `solution.swift` | `/usr/bin/swiftc` | `./solution` |
 
 ---
 
@@ -39,6 +43,10 @@ GoBoxD supports the following languages out of the box. Adding a new language re
 | kotlin | 5s | 512 MB | 100 |
 | ruby | 9s | 100 MB | 100 |
 | lua | 9s | 100 MB | 100 |
+| ocaml | 9s | 512 MB | 64 |
+| typescript | 9s | 1024 MB | 100 |
+| scala | 9s | 2048 MB | 100 |
+| swift | 5s | 512 MB | 64 |
 
 ---
 
@@ -153,6 +161,41 @@ puts n * 2
 ```lua
 local n = tonumber(io.read())
 print(n * 2)
+```
+
+### OCaml (`ocaml`)
+```ocaml
+let () =
+  let n = read_int () in
+  print_int (n * 2);
+  print_newline ()
+```
+
+### TypeScript (`typescript`)
+```typescript
+import * as fs from 'fs';
+const input = fs.readFileSync('/dev/stdin', 'utf-8').trim();
+const n = parseInt(input, 10);
+console.log(n * 2);
+```
+
+### Scala (`scala`)
+```scala
+import scala.io.StdIn.readLine
+
+object Main {
+  def main(args: Array[String]): Unit = {
+    val n = readLine().trim.toInt
+    println(n * 2)
+  }
+}
+```
+
+### Swift (`swift`)
+```swift
+if let input = readLine(), let n = Int(input.trimmingCharacters(in: .whitespacesAndNewlines)) {
+    print(n * 2)
+}
 ```
 
 ---

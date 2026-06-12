@@ -85,7 +85,7 @@ Every request needs a JSON body containing three main pieces of information:
 
 | Field | Description | Example |
 | :--- | :--- | :--- |
-| **`language`** | The language of your code (`py3` or `cpp`) | `"py3"` |
+| **`language`** | The language of your code (`py3`, `cpp`, `ocaml`, `typescript`, `scala`, `swift`, etc.) | `"py3"` |
 | **`source`** | Your source code as a text string | `"print('Hello World')"` |
 | **`tests`** | An array of tests to run (with inputs and expected outputs) | `[{"stdin": "", "expected_stdout": ""}]` |
 

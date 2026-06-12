@@ -31,3 +31,8 @@ cd docs/loadtest/run4 && ../../../venv/bin/python3 ../plot.py
 
 ## Conclusion
 Run 4 is the definitive result for the challenge. It strictly obeys the 10-second timeout constraint and uses tuned memory bounds to safely run 8 concurrent JVMs inside a rigid 2GB / 2vCPU box, providing maximum stable throughput without crashing.
+
+## Graphs
+
+![Latency](latency.png)
+![Breaking Point](breaking-point.png)

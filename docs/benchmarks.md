@@ -205,3 +205,17 @@ python3 -c "print('x'*262145)" | \
   curl -sf -X POST http://localhost:8080/run -H "Content-Type: application/json" -d @- | \
   jq .error.code
 ```
+
+---
+
+## Load Testing (Runs 1-4)
+
+I conducted extensive automated load testing (Runs 1-4) using `MemoryHog.java` and Vegeta. The goal was to maximize successful request throughput without exceeding the hard 10-second client timeout, while ensuring the sandbox never crashes under extreme pressure (2 vCPU, 2 GB RAM).
+
+### Summary of Findings
+- **Run 1**: Baseline test. Handled queues smoothly but saturated quickly at 5 RPS. Clean 429 degradation.
+- **Run 2**: Applied JVM tuning and increased `max_concurrent` to 6. Achieved a +60% throughput improvement.
+- **Run 3**: Set client timeout to 10s. Discovered a queue logic flaw where requests were held too long, leading to silent client-side timeouts.
+- **Run 4**: Lowered `queue_timeout_s` to 7s, fixing the timeout misalignment. Success rate surged by 3x with pristine graceful degradation.
+
+For full configurations, analysis, and latency graphs of these runs, see my comprehensive [Load Test Performance Report](loadtest/loadtest-report.md).
