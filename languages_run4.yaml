@@ -1,0 +1,366 @@
+# Adding a new language is simple:
+# 1. Add one YAML block under languages
+# 2. Add one shell script in scripts/lang_install/<id>.sh
+# 3. Zero Dockerfile changes needed. Zero Go code changes needed.
+
+languages:
+  py3:
+    id: py3
+    name: Python 3
+    source_filename: solution.py
+    run:
+      cmd: /usr/bin/python3
+      args:
+        - "{{source}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 102400
+        max_processes: 100
+
+  cpp:
+    id: cpp
+    name: C++
+    source_filename: solution.cpp
+    artifact: solution
+    build:
+      cmd: /usr/bin/g++
+      args:
+        - "{{flags}}"
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 10
+        memory_kb: 1048576
+        max_processes: 100
+      flag_allowlist:
+        - "-O0"
+        - "-O1"
+        - "-O2"
+        - "-O3"
+        - "-Wall"
+        - "-Wextra"
+        - "-std=*"
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 3
+        memory_kb: 524288
+        max_processes: 64
+
+  c:
+    id: c
+    name: C
+    source_filename: solution.c
+    artifact: solution
+    build:
+      cmd: /usr/bin/gcc
+      args:
+        - "{{flags}}"
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 10
+        memory_kb: 1048576
+        max_processes: 100
+      flag_allowlist:
+        - "-O0"
+        - "-O1"
+        - "-O2"
+        - "-O3"
+        - "-Wall"
+        - "-Wextra"
+        - "-std=*"
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 3
+        memory_kb: 524288
+        max_processes: 64
+
+  java:
+    id: java
+    name: Java
+    source_filename: Solution.java
+    source_filename_strategy: from_request
+    artifact: Solution.class
+    artifact_filename_strategy: from_request
+    build:
+      cmd: /usr/bin/javac
+      args:
+        - "-g:none"
+        - "-J-Xmx512m"
+        - "-J-XX:TieredStopAtLevel=1"
+        - "-J-XX:+UseSerialGC"
+        - "-J-XX:CICompilerCount=1"
+        - "-J-XX:-UsePerfData"
+        - "{{source}}"
+      limits:
+        wall_time_s: 30
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: /usr/bin/java
+      args:
+        - "-XX:TieredStopAtLevel=1"
+        - "-XX:+UseSerialGC"
+        - "-XX:CICompilerCount=1"
+        - "-XX:-UsePerfData"
+        - "-Xmx400m"
+        - "-Xms200m"
+        - "-XX:MaxMetaspaceSize=32m"
+        - "-cp"
+        - "."
+        - "{{class}}"
+      limits:
+        wall_time_s: 15
+        memory_kb: 524288
+        max_processes: 100
+
+  node:
+    id: node
+    name: Node.js (javascript)
+    source_filename: solution.js
+    run:
+      cmd: /usr/bin/node
+      args:
+        - "{{source}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 102400
+        max_processes: 100
+
+  bash:
+    id: bash
+    name: Bash (sh)
+    source_filename: solution.sh
+    run:
+      cmd: /bin/bash
+      args:
+        - "{{source}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 102400
+        max_processes: 100
+
+  verilog:
+    id: verilog
+    name: Verilog
+    source_filename: solution.v
+    artifact: solution.vvp
+    build:
+      cmd: /usr/bin/iverilog
+      args:
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 5
+        memory_kb: 524288
+        max_processes: 100
+    run:
+      cmd: /usr/bin/vvp
+      args:
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 5
+        memory_kb: 262144
+        max_processes: 100
+
+  rust:
+    id: rust
+    name: Rust
+    source_filename: solution.rs
+    artifact: solution
+    build:
+      cmd: /usr/bin/rustc
+      args:
+        - "-O"
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 10
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 3
+        memory_kb: 524288
+        max_processes: 64
+
+  go:
+    id: go
+    name: Go
+    source_filename: solution.go
+    artifact: solution
+    build:
+      cmd: /usr/local/go/bin/go
+      args:
+        - "build"
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 15
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 3
+        memory_kb: 524288
+        max_processes: 64
+
+  kotlin:
+    id: kotlin
+    name: Kotlin
+    source_filename: solution.kt
+    artifact: solution.jar
+    build:
+      cmd: /usr/bin/kotlinc
+      args:
+        - "{{source}}"
+        - "-include-runtime"
+        - "-d"
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 15
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: /usr/bin/java
+      args:
+        - "-jar"
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 5
+        memory_kb: 524288
+        max_processes: 100
+  ruby:
+    id: ruby
+    name: Ruby
+    source_filename: solution.rb
+    run:
+      cmd: /usr/bin/ruby
+      args:
+        - "{{source}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 102400
+        max_processes: 100
+  lua:
+    id: lua
+    name: Lua
+    source_filename: solution.lua
+    run:
+      cmd: /usr/bin/lua5.4
+      args:
+        - "{{source}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 102400
+        max_processes: 100
+  ocaml:
+    id: ocaml
+    name: OCaml
+    source_filename: solution.ml
+    artifact: solution
+    build:
+      cmd: /usr/bin/ocamlopt
+      args:
+        - "-o"
+        - "{{artifact}}"
+        - "{{source}}"
+      limits:
+        wall_time_s: 10
+        memory_kb: 1048576
+        max_processes: 100
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 9
+        memory_kb: 524288
+        max_processes: 64
+  typescript:
+    id: typescript
+    name: TypeScript
+    source_filename: solution.ts
+    artifact: solution.js
+    build:
+      cmd: /usr/local/bin/tsc
+      args:
+        - "{{source}}"
+        - "--target"
+        - "ES2020"
+      limits:
+        wall_time_s: 15
+        memory_kb: 2097152
+        max_processes: 100
+    run:
+      cmd: /usr/bin/node
+      args:
+        - "--jitless"
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 1048576
+        max_processes: 100
+  scala:
+    id: scala
+    name: Scala
+    source_filename: solution.scala
+    artifact: solution.jar
+    build:
+      cmd: /usr/bin/scalac
+      args:
+        - "-J-Xmx512m"
+        - "{{source}}"
+        - "-d"
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 30
+        memory_kb: 4194304
+        max_processes: 100
+    run:
+      cmd: /usr/bin/scala
+      args:
+        - "-J-Xmx256m"
+        - "{{artifact}}"
+      limits:
+        wall_time_s: 9
+        memory_kb: 2097152
+        max_processes: 100
+  swift:
+    id: swift
+    name: Swift
+    source_filename: solution.swift
+    artifact: solution
+    build:
+      cmd: /usr/bin/swiftc
+      args:
+        - "-module-cache-path"
+        - "/tmp/module-cache"
+        - "-use-ld=bfd"
+        - "-static-stdlib"
+        - "{{source}}"
+        - "-o"
+        - "{{artifact}}"
+        - "-O"
+      limits:
+        wall_time_s: 40
+        memory_kb: 2097152
+        max_processes: 100
+    run:
+      cmd: ./{{artifact}}
+      limits:
+        wall_time_s: 5
+        memory_kb: 524288
+        max_processes: 64
+max_body_bytes: 4194304
+max_source_bytes: 262144
+max_tests: 50
+max_concurrent: 8
+queue_timeout_s: 30
